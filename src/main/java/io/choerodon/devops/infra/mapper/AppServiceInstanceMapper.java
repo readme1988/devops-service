@@ -59,7 +59,7 @@ public interface AppServiceInstanceMapper extends Mapper<AppServiceInstanceDTO> 
 
     void deleteInstanceRelInfo(@Param("instanceId") Long instanceId);
 
-    Boolean checkCodeExist(@Param("code") String code, @Param("envIds") List<Long> envIds);
+    Boolean checkCodeExist(@Param("code") String code, @Param("envId") Long envId);
 
     int countNonDeletedInstances(@Param("appServiceId") Long appServiceId,
                                  @Nullable @Param("projectId") Long projectId);
@@ -71,4 +71,9 @@ public interface AppServiceInstanceMapper extends Mapper<AppServiceInstanceDTO> 
     List<DevopsEnvAppServiceDTO> listAllDistinctWithoutDeleted();
 
     List<AppServiceInstanceDTO> listByProjectIdsAndAppServiceId(@Param("projectIds") Set<Long> projectIds,@Param("appServiceId") Long appServiceId);
+
+    boolean isOtherComponentDeployed(
+            @Param("envId") Long envId,
+            @Param("instanceCode") String instanceCode,
+            @Param("componentChartName") String componentChartName);
 }

@@ -1,13 +1,8 @@
 package io.choerodon.devops.api.controller.v1;
 
-import java.util.List;
-import java.util.Optional;
-import javax.validation.Valid;
-
 import com.github.pagehelper.PageInfo;
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.*;
@@ -17,10 +12,15 @@ import io.choerodon.swagger.annotation.CustomPageRequest;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
+
+import javax.validation.Valid;
+import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping(value = "/v1/projects/{project_id}/clusters")
@@ -145,10 +145,10 @@ public class DevopsClusterController {
     /**
      * 分页查询集群下已有权限的项目列表
      *
-     * @param projectId   项目id
-     * @param clusterId   集群id
-     * @param pageRequest 分页参数
-     * @param params      查询参数
+     * @param projectId 项目id
+     * @param clusterId 集群id
+     * @param pageable  分页参数
+     * @param params    查询参数
      * @return page
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
@@ -160,10 +160,10 @@ public class DevopsClusterController {
             @ApiParam(value = "集群Id")
             @PathVariable(value = "cluster_id") Long clusterId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "模糊搜索参数")
             @RequestBody(required = false) String params) {
-        return Optional.ofNullable(devopsClusterService.pageRelatedProjects(projectId, clusterId, pageRequest, params))
+        return Optional.ofNullable(devopsClusterService.pageRelatedProjects(projectId, clusterId, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.project.query"));
     }
@@ -179,14 +179,18 @@ public class DevopsClusterController {
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
     @ApiOperation(value = "查询组织下所有与该集群未分配权限的项目")
     @PostMapping(value = "/{cluster_id}/permission/list_non_related")
-    public ResponseEntity<List<ProjectReqVO>> listAllNonRelatedProjects(
+    public ResponseEntity<PageInfo<ProjectReqVO>> listAllNonRelatedProjects(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "集群id", required = true)
             @PathVariable(value = "cluster_id") Long clusterId,
+            @ApiParam(value = "分页参数")
+            @ApiIgnore Pageable pageable,
+            @ApiParam(value = "指定项目id")
+            @RequestParam(value = "id", required = false) Long selectedProjectId,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
-        return new ResponseEntity<>(devopsClusterService.listNonRelatedProjects(projectId, clusterId, params), HttpStatus.OK);
+        return new ResponseEntity<>(devopsClusterService.listNonRelatedProjects(projectId, clusterId, selectedProjectId, pageable, params), HttpStatus.OK);
     }
 
     /**
@@ -234,14 +238,14 @@ public class DevopsClusterController {
 
 
     /**
-     * 查询shell脚本
+     * 查询激活集群的命令
      *
      * @param projectId 项目ID
      * @param clusterId 集群Id
      * @return String
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "查询shell脚本")
+    @ApiOperation(value = "查询激活集群的命令")
     @CustomPageRequest
     @GetMapping("/query_shell/{cluster_id}")
     public ResponseEntity<String> queryShell(
@@ -260,7 +264,7 @@ public class DevopsClusterController {
      * @param projectId 项目ID
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "项目下所有集群以及所有的节点名称")
+    @ApiOperation(value = "项目下所有集群以及所有的节点名称(树形目录)")
     @GetMapping("/tree_menu")
     public ResponseEntity<List<DevopsClusterBasicInfoVO>> queryClustersAndNodes(
             @ApiParam(value = "项目Id", required = true)
@@ -271,25 +275,25 @@ public class DevopsClusterController {
     }
 
     /**
-     * 集群列表查询
+     * 分页查询集群列表
      *
      * @param projectId 项目ID
      * @return Page
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "集群列表查询")
+    @ApiOperation(value = "分页查询集群列表")
     @CustomPageRequest
     @PostMapping("/page_cluster")
     public ResponseEntity<PageInfo<ClusterWithNodesVO>> pageCluster(
             @ApiParam(value = "项目ID", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "是否需要分页")
             @RequestParam(value = "doPage", required = false) Boolean doPage,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
-        return Optional.ofNullable(devopsClusterService.pageClusters(projectId, doPage, pageRequest, params))
+        return Optional.ofNullable(devopsClusterService.pageClusters(projectId, doPage, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException(ERROR_CLUSTER_QUERY));
     }
@@ -321,14 +325,14 @@ public class DevopsClusterController {
      * @return String
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "查询集群下是否关联已连接环境")
-    @GetMapping("/{cluster_id}/check_connect_envs")
-    public ResponseEntity<Boolean> checkConnectEnvs(
+    @ApiOperation(value = "查询集群下是否关联已连接环境或者存在PV")
+    @GetMapping("/{cluster_id}/check_connect_envs_and_pv")
+    public ResponseEntity<ClusterMsgVO> checkConnectEnvsAndPV(
             @ApiParam(value = "项目ID", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "集群Id")
             @PathVariable(value = "cluster_id") Long clusterId) {
-        return Optional.ofNullable(devopsClusterService.checkConnectEnvs(clusterId))
+        return Optional.ofNullable(devopsClusterService.checkConnectEnvsAndPV(clusterId))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.connect.env.query"));
     }
@@ -339,7 +343,7 @@ public class DevopsClusterController {
      * @param projectId   项目id
      * @param clusterId   集群id
      * @param nodeName    节点名称
-     * @param pageRequest 分页参数
+     * @param pageable    分页参数
      * @param searchParam 查询参数
      * @return pods
      */
@@ -355,10 +359,10 @@ public class DevopsClusterController {
             @ApiParam(value = "节点名称", required = true)
             @RequestParam(value = "node_name") String nodeName,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数", required = false)
             @RequestBody(required = false) String searchParam) {
-        return Optional.ofNullable(devopsClusterService.pagePodsByNodeName(clusterId, nodeName, pageRequest, searchParam))
+        return Optional.ofNullable(devopsClusterService.pagePodsByNodeName(clusterId, nodeName, pageable, searchParam))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.node.pod.query", nodeName));
     }
@@ -366,9 +370,9 @@ public class DevopsClusterController {
     /**
      * 分页查询集群下的节点
      *
-     * @param projectId   项目ID
-     * @param clusterId   集群id
-     * @param pageRequest 分页参数
+     * @param projectId 项目ID
+     * @param clusterId 集群id
+     * @param pageable  分页参数
      * @return Page
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
@@ -381,8 +385,8 @@ public class DevopsClusterController {
             @ApiParam(value = "集群id", required = true)
             @RequestParam(value = "cluster_id") Long clusterId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest) {
-        return new ResponseEntity<>(clusterNodeInfoService.pageClusterNodeInfo(clusterId, projectId, pageRequest), HttpStatus.OK);
+            @ApiIgnore Pageable pageable) {
+        return new ResponseEntity<>(clusterNodeInfoService.pageClusterNodeInfo(clusterId, projectId, pageable), HttpStatus.OK);
     }
 
 
@@ -406,6 +410,4 @@ public class DevopsClusterController {
             @RequestParam(value = "node_name") String nodeName) {
         return new ResponseEntity<>(clusterNodeInfoService.queryNodeInfo(projectId, clusterId, nodeName), HttpStatus.OK);
     }
-
-
 }

@@ -2,15 +2,18 @@ package io.choerodon.devops.app.service.impl;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import io.choerodon.core.exception.CommonException;
 import io.choerodon.devops.api.vo.UserAttrVO;
 import io.choerodon.devops.app.service.UserAttrService;
 import io.choerodon.devops.infra.dto.UserAttrDTO;
 import io.choerodon.devops.infra.mapper.UserAttrMapper;
 import io.choerodon.devops.infra.util.ConvertUtils;
+import io.choerodon.devops.infra.util.MapperUtil;
 
 @Service
 public class UserAttrServiceImpl implements UserAttrService {
@@ -24,6 +27,14 @@ public class UserAttrServiceImpl implements UserAttrService {
     }
 
     @Override
+    public UserAttrDTO checkUserSync(UserAttrDTO userAttrDTO, Long iamUserId) {
+        if (userAttrDTO == null || userAttrDTO.getGitlabUserId() == null) {
+            throw new CommonException("error.iam.user.sync.to.gitlab", iamUserId);
+        }
+        return userAttrDTO;
+    }
+
+    @Override
     public Long queryUserIdByGitlabUserId(Long gitLabUserId) {
         try {
             return baseQueryUserIdByGitlabUserId(gitLabUserId);
@@ -33,8 +44,8 @@ public class UserAttrServiceImpl implements UserAttrService {
     }
 
     @Override
-    public int baseInsert(UserAttrDTO userAttrDTO) {
-        return userAttrMapper.insert(userAttrDTO);
+    public void baseInsert(UserAttrDTO userAttrDTO) {
+        MapperUtil.resultJudgedInsert(userAttrMapper, userAttrDTO, "error.insert.user");
     }
 
     @Override
@@ -83,5 +94,10 @@ public class UserAttrServiceImpl implements UserAttrService {
         UserAttrDTO userAttrDTO = new UserAttrDTO();
         userAttrDTO.setGitlabUserName(gitlabUserName);
         return userAttrMapper.selectOne(userAttrDTO);
+    }
+
+    @Override
+    public void updateAdmin(Long iamUserId, Boolean isGitlabAdmin) {
+        userAttrMapper.updateIsGitlabAdmin(Objects.requireNonNull(iamUserId), Objects.requireNonNull(isGitlabAdmin));
     }
 }

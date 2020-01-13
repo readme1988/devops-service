@@ -1,16 +1,15 @@
 import React, { Component } from 'react';
 import { observer, inject } from 'mobx-react';
-import { withRouter, Prompt } from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import { injectIntl, FormattedMessage } from 'react-intl';
 import { Modal, Icon, Form, Input, Select, Radio, Tooltip } from 'choerodon-ui';
 import { Button } from 'choerodon-ui/pro';
-import { Content, Header, Page, Choerodon } from '@choerodon/boot';
+import { Choerodon } from '@choerodon/boot';
 import _ from 'lodash';
 import StageCard from '../components/stageCard';
 import StageCreateModal from '../components/stageCreateModal';
 import { STAGE_FLOW_AUTO, STAGE_FLOW_MANUAL, TRIGGER_TYPE_AUTO, TRIGGER_TYPE_MANUAL } from '../components/Constants';
 import InterceptMask from '../../../components/intercept-mask';
-import Tips from '../../../components/Tips/Tips';
 import PipelineCreateStore from '../stores/PipelineCreateStore';
 
 import './index.less';
@@ -43,7 +42,6 @@ export default class PipelineCreate extends Component {
     showCreate: false,
     prevId: null,
     submitLoading: false,
-    promptDisplay: true,
   };
 
   checkName = _.debounce((rule, value, callback) => {
@@ -78,13 +76,6 @@ export default class PipelineCreate extends Component {
   }, 600);
 
   componentDidMount() {
-    const {
-      AppState: {
-        currentMenuType: { id },
-      },
-    } = this.props;
-
-    PipelineCreateStore.loadUser(id);
     PipelineCreateStore.checkCanSubmit();
   }
 
@@ -100,7 +91,6 @@ export default class PipelineCreate extends Component {
 
   onSubmit = (e) => {
     e.preventDefault();
-    this.setState({ promptDisplay: false });
 
     const {
       form: { validateFieldsAndScroll },
@@ -194,6 +184,39 @@ export default class PipelineCreate extends Component {
     />));
   }
 
+  loadMoreWrap = (e) => {
+    e.stopPropagation();
+    const {
+      AppState: {
+        currentMenuType: { id: projectId },
+      },
+    } = this.props;
+    const {
+      getPageInfo,
+    } = PipelineCreateStore;
+    const { pageNum } = getPageInfo || {};
+    PipelineCreateStore.loadUser(projectId, pageNum + 1);
+  };
+
+  handleSearch = _.debounce((value) => {
+    const { 
+      AppState: {
+        currentMenuType: { id: projectId },
+      },
+    } = this.props;
+    PipelineCreateStore.loadUser(projectId, 1, value);
+  }, 700);
+
+  handleUserChange = (value) => {
+    const {
+      form: { setFieldsValue },
+    } = this.props;
+    if (_.includes(value, 'pipeline-create-user-select-more-key')) {
+      const realValue = _.remove(value, (item) => item === 'pipeline-create-user-select-more-key');
+      setFieldsValue({ users: realValue });
+    }
+  };
+
   render() {
     const {
       intl: { formatMessage },
@@ -205,13 +228,13 @@ export default class PipelineCreate extends Component {
       showCreate,
       prevId,
       submitLoading,
-      promptDisplay,
     } = this.state;
     const {
       getLoading,
       getUser,
       getIsDisabled,
       getCanSubmit,
+      getPageInfo,
     } = PipelineCreateStore;
 
     const user = _.map(getUser, ({ id, realName, loginName }) => (
@@ -219,6 +242,16 @@ export default class PipelineCreate extends Component {
         <Tooltip title={loginName}>{realName || loginName}</Tooltip>
       </Option>
     ));
+    if (getPageInfo && getPageInfo.hasNextPage) {
+      user.push(<Option key="pipeline-create-user-select-more-key" className="c7n-load-more-wrap">
+        <div
+          className="c7n-option-popover"
+          onClick={this.loadMoreWrap}
+        >
+          <span className="c7n-option-span">{formatMessage({ id: 'loadMore' })}</span>
+        </div>
+      </Option>);
+    }
 
     return (
       <Sidebar
@@ -308,15 +341,14 @@ export default class PipelineCreate extends Component {
               })(
                 <Select
                   filter
+                  filterOption={false}
                   allowClear
                   mode="multiple"
-                  optionFilterProp="children"
                   label={formatMessage({ id: 'pipeline.trigger.member' })}
                   loading={getLoading.user}
                   getPopupContainer={(triggerNode) => triggerNode.parentNode}
-                  filterOption={(input, option) => option.props.children.props.children
-                    .toLowerCase()
-                    .indexOf(input.toLowerCase()) >= 0}
+                  onSearch={this.handleSearch}
+                  onChange={this.handleUserChange}
                 >
                   {user}
                 </Select>,

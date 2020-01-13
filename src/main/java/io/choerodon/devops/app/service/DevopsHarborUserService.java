@@ -1,9 +1,6 @@
 package io.choerodon.devops.app.service;
 
-import java.util.List;
-
 import io.choerodon.devops.infra.dto.HarborUserDTO;
-import io.choerodon.devops.infra.dto.harbor.User;
 
 /**
  * @author: 25499
@@ -11,8 +8,12 @@ import io.choerodon.devops.infra.dto.harbor.User;
  * @description:
  */
 public interface DevopsHarborUserService {
-    public long create(HarborUserDTO harborUser);
+    void baseCreateOrUpdate(HarborUserDTO harborUser);
 
-    public HarborUserDTO queryHarborUserById(Long id);
+    void baseCreate(HarborUserDTO harborUser);
+
+    HarborUserDTO queryHarborUserById(Long id);
+
+    void baseDelete(Long harborUserId);
 
 }

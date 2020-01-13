@@ -1,18 +1,16 @@
 import { axios } from '@choerodon/boot';
 import map from 'lodash/map';
 import omit from 'lodash/omit';
+import pick from 'lodash/pick';
 
 function getRequestData(appServiceList) {
-  const res = map(appServiceList, ({ id, name, code, type, versionId, versions = [] }) => {
-    const { id: verId } = versions[0] || {};
-    return ({
-      appServiceId: id,
-      appName: name,
-      appCode: code,
-      type,
-      versionId: versionId || verId,
-    });
-  });
+  const res = map(appServiceList, ({ id, name, code, type, versionId }) => ({
+    appServiceId: id,
+    appName: name,
+    appCode: code,
+    type,
+    versionId,
+  }));
   return res;
 }
 
@@ -73,16 +71,26 @@ export default ((intlPrefix, formatMessage, projectId, selectedDs) => {
           record.getField('accessToken').set('required', false);
           break;
         case 'github':
+          record.getField('repositoryUrl').set('label', formatMessage({ id: `${intlPrefix}.url.github` }));
           handleRequired(record, true);
           record.getField('accessToken').set('required', false);
-          record.getField('repositoryUrl').set('label', formatMessage({ id: `${intlPrefix}.url.github` }));
+          if (record.get('repositoryUrl') || !record.getField('repositoryUrl').isValid()) {
+            record.set('repositoryUrl', null);
+          }
+          if (record.get('isTemplate')) {
+            record.getField('githubTemplate').fetchLookup();
+            record.get('githubTemplate') && record.set('repositoryUrl', record.get('githubTemplate'));
+          }
           record.getField('name').set('validator', checkName);
           record.getField('code').set('validator', checkCode);
           break;
         case 'gitlab':
-          handleRequired(record, true);
-          record.getField('accessToken').set('required', true);
           record.getField('repositoryUrl').set('label', formatMessage({ id: `${intlPrefix}.url.gitlab` }));
+          handleRequired(record, true);
+          if (record.get('repositoryUrl') || !record.getField('repositoryUrl').isValid()) {
+            record.set('repositoryUrl', null);
+          }
+          record.getField('accessToken').set('required', true);
           record.getField('name').set('validator', checkName);
           record.getField('code').set('validator', checkCode);
           break;
@@ -90,6 +98,25 @@ export default ((intlPrefix, formatMessage, projectId, selectedDs) => {
           break;
       }
     }
+    if (name === 'githubTemplate') {
+      record.set('repositoryUrl', value);
+    }
+    if (name === 'isTemplate') {
+      record.get('repositoryUrl') && record.set('repositoryUrl', null);
+      if (value && record.get('githubTemplate')) {
+        record.set('repositoryUrl', record.get('githubTemplate'));
+      }
+    }
+  }
+
+  function templateDynamicProps({ record }) {
+    if (record.get('platformType') === 'github') {
+      return {
+        lookupUrl: `/devops/v1/projects/${projectId}/app_service/list_service_templates`,
+        required: record.get('isTemplate'),
+      };
+    }
+    return {};
   }
 
   return ({
@@ -100,7 +127,14 @@ export default ((intlPrefix, formatMessage, projectId, selectedDs) => {
       create: ({ data: [data] }) => {
         const { platformType, appServiceList } = data;
         let url = 'external';
-        let res = omit(data, ['__id', '__status', 'appServiceList']);
+        let res;
+        if (platformType === 'gitlab') {
+          res = pick(data, ['code', 'name', 'type', 'accessToken', 'repositoryUrl']);
+        }
+        if (platformType === 'github') {
+          url = `${url}${data.isTemplate ? '?is_template=true' : ''}`;
+          res = pick(data, ['code', 'name', 'type', 'repositoryUrl']);
+        }
         if (platformType === 'share' || platformType === 'market') {
           url = 'internal';
           res = getRequestData(appServiceList);
@@ -113,13 +147,15 @@ export default ((intlPrefix, formatMessage, projectId, selectedDs) => {
       },
     },
     fields: [
-      { name: 'name', type: 'string', label: formatMessage({ id: `${intlPrefix}.name` }), maxLength: 20 },
+      { name: 'name', type: 'string', label: formatMessage({ id: `${intlPrefix}.name` }), maxLength: 40 },
       { name: 'code', type: 'string', label: formatMessage({ id: `${intlPrefix}.code` }), maxLength: 30 },
       { name: 'type', type: 'string', defaultValue: 'normal', label: formatMessage({ id: `${intlPrefix}.type` }) },
       { name: 'platformType', type: 'string', label: formatMessage({ id: `${intlPrefix}.import.type` }), defaultValue: 'share' },
       { name: 'repositoryUrl', type: 'url' },
       { name: 'accessToken', type: 'string', label: formatMessage({ id: `${intlPrefix}.token` }) },
       { name: 'appServiceList', type: 'object' },
+      { name: 'isTemplate', type: 'bool', label: formatMessage({ id: `${intlPrefix}.github.source` }), defaultValue: true },
+      { name: 'githubTemplate', type: 'string', textField: 'name', valueField: 'path', label: formatMessage({ id: `${intlPrefix}.github.template` }), dynamicProps: templateDynamicProps },
     ],
     events: {
       update: handleUpdate,

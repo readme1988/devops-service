@@ -10,12 +10,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import io.choerodon.base.annotation.Permission;
+import io.choerodon.core.annotation.Permission;
 import io.choerodon.devops.app.service.DevopsCheckLogService;
 
 @RestController
 @RequestMapping(value = "/v1/upgrade")
-public class DevopsCheckController {
+public class  DevopsCheckController {
 
     @Autowired
     private DevopsCheckLogService devopsCheckLogService;
@@ -26,7 +26,7 @@ public class DevopsCheckController {
      * @param version 版本
      */
     @Permission(permissionLogin = true)
-    @ApiOperation(value = "平滑升级")
+    @ApiOperation(value = "用于平滑升级(迁移数据等操作,可以多次调用)")
     @GetMapping
     public ResponseEntity<String> checkLog(
             @ApiParam(value = "version")
@@ -34,6 +34,5 @@ public class DevopsCheckController {
         devopsCheckLogService.checkLog(version);
         return new ResponseEntity<>(System.currentTimeMillis() + "", HttpStatus.OK);
     }
-
 
 }

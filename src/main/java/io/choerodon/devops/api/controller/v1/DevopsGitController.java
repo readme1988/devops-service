@@ -8,20 +8,20 @@ import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.domain.Sort;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.*;
 import io.choerodon.devops.app.service.DevopsGitService;
-import io.choerodon.mybatis.annotation.SortDefault;
 import io.choerodon.swagger.annotation.CustomPageRequest;
 
 
@@ -40,7 +40,7 @@ public class DevopsGitController {
 
 
     /**
-     * 获取工程下地址
+     * 获取应用服务的GitLab地址
      *
      * @param projectId    项目 ID
      * @param appServiceId 服务ID
@@ -48,7 +48,7 @@ public class DevopsGitController {
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "获取工程下地址")
+    @ApiOperation(value = "获取应用服务的GitLab地址")
     @GetMapping("/url")
     public ResponseEntity<String> queryUrl(
             @ApiParam(value = "项目id", required = true)
@@ -251,10 +251,10 @@ public class DevopsGitController {
             @ApiParam(value = "服务id", required = true)
             @PathVariable(value = "app_service_id") Long appServiceId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
-        return Optional.ofNullable(devopsGitService.pageBranchByOptions(projectId, pageRequest, appServiceId, params))
+        return Optional.ofNullable(devopsGitService.pageBranchByOptions(projectId, pageable, appServiceId, params))
                 .map(result -> new ResponseEntity<>(result, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.branch.get"));
     }
@@ -347,8 +347,8 @@ public class DevopsGitController {
             @RequestParam(value = "state", required = false) String state,
             @ApiParam(value = "分页参数")
             @SortDefault(value = "id", direction = Sort.Direction.DESC)
-            @ApiIgnore PageRequest pageRequest) {
-        return Optional.ofNullable(devopsGitService.listMergeRequest(projectId, appServiceId, state, pageRequest))
+            @ApiIgnore Pageable pageable) {
+        return Optional.ofNullable(devopsGitService.listMergeRequest(projectId, appServiceId, state, pageable))
                 .map(result -> new ResponseEntity<>(result, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.mergerequest.get"));
     }

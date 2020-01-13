@@ -1,10 +1,9 @@
 package io.choerodon.devops.infra.dto;
 
 
-import java.util.Date;
-import javax.persistence.*;
-
 import io.choerodon.mybatis.entity.BaseDTO;
+
+import javax.persistence.*;
 
 /**
  * Created by Zenger on 2018/4/3.
@@ -36,6 +35,26 @@ public class AppServiceVersionDTO extends BaseDTO {
     private String appServiceType;
     @Transient
     private String readme;
+    @Transient
+    private String values;
+    @Transient
+    private String chartName;
+
+    public String getChartName() {
+        return chartName;
+    }
+
+    public void setChartName(String chartName) {
+        this.chartName = chartName;
+    }
+
+    public String getValues() {
+        return values;
+    }
+
+    public void setValues(String values) {
+        this.values = values;
+    }
 
     public String getReadme() {
         return readme;

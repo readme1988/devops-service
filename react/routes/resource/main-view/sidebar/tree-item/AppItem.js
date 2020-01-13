@@ -3,7 +3,8 @@ import PropTypes from 'prop-types';
 import { observer } from 'mobx-react-lite';
 import { injectIntl } from 'react-intl';
 import { Action, Choerodon } from '@choerodon/boot';
-import { Icon, Modal } from 'choerodon-ui/pro';
+import { Icon, Modal, Tooltip } from 'choerodon-ui/pro';
+import AppName from '../../../../../components/appName';
 import { handlePromptError } from '../../../../../utils';
 import eventStopProp from '../../../../../utils/eventStopProp';
 import { useResourceStore } from '../../../stores';
@@ -18,7 +19,6 @@ function AppItem({ name, record, intl: { formatMessage }, intlPrefix }) {
   } = useResourceStore();
   const { treeItemStore } = useTreeItemStore();
 
-  const type = record.get('type');
   async function handleClick() {
     if (!record) return;
 
@@ -43,6 +43,12 @@ function AppItem({ name, record, intl: { formatMessage }, intlPrefix }) {
       children: formatMessage({ id: `${intlPrefix}.modal.service.delete.desc` }),
       okText: formatMessage({ id: 'delete' }),
       onOk: handleClick,
+      okProps: {
+        color: 'red',
+      },
+      cancelProps: {
+        color: 'dark',
+      },
     });
   }
 
@@ -54,17 +60,25 @@ function AppItem({ name, record, intl: { formatMessage }, intlPrefix }) {
     }];
     return <Action placement="bottomRight" data={actionData} onClick={eventStopProp} />;
   }
-  function renderIcon(appType) {
-    if (appType === 'normal_server') {
-      return <Icon type="widgets" />;
-    } else if (appType === 'share_service') {
-      return <Icon type="share" />;
-    } else {
-      return <Icon type="application_market" />;
+  function renderIcon() {
+    const type = record.get('type');
+    let iconType = 'widgets';
+    let message = 'project';
+    if (type === 'market_service') {
+      iconType = 'application_market';
+      message = 'market';
+    } else if (type === 'share_service') {
+      iconType = 'share';
+      message = 'share';
     }
+    return (
+      <Tooltip title={formatMessage({ id: message })}>
+        <Icon type={iconType} />
+      </Tooltip>
+    );
   }
   return <Fragment>
-    {renderIcon(type)}
+    {renderIcon()}
     {name}
     {getSuffix()}
   </Fragment>;

@@ -1,30 +1,29 @@
 package io.choerodon.devops.api.controller.v1;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import com.github.pagehelper.PageInfo;
-
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.domain.Sort;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.*;
 import io.choerodon.devops.app.service.AppServiceService;
 import io.choerodon.devops.infra.enums.GitPlatformType;
-import io.choerodon.mybatis.annotation.SortDefault;
 import io.choerodon.swagger.annotation.CustomPageRequest;
-
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
+
+import java.util.Date;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Created by younger on 2018/4/4.
@@ -41,20 +40,20 @@ public class AppServiceController {
     }
 
     /**
-     * 项目下创建服务
+     * 项目下创建应用服务
      *
      * @param projectId       项目id
      * @param appServiceReqVO 服务信息
      * @return ApplicationServiceRepVO
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下创建服务")
+    @ApiOperation(value = "项目下创建应用服务")
     @PostMapping
     public ResponseEntity<AppServiceRepVO> create(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "服务信息", required = true)
-            @RequestBody AppServiceReqVO appServiceReqVO) {
+            @RequestBody @Validated AppServiceReqVO appServiceReqVO) {
         return Optional.ofNullable(applicationServiceService.create(projectId, appServiceReqVO))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.service.create"));
@@ -73,9 +72,11 @@ public class AppServiceController {
     public ResponseEntity<AppServiceRepVO> importApp(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
+            @ApiParam(value = "是否系统模板", required = false)
+            @RequestParam(value = "is_template", required = false) Boolean isTemplate,
             @ApiParam(value = "服务信息", required = true)
             @RequestBody AppServiceImportVO appServiceImportVO) {
-        return Optional.ofNullable(applicationServiceService.importApp(projectId, appServiceImportVO))
+        return Optional.ofNullable(applicationServiceService.importApp(projectId, appServiceImportVO, isTemplate))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.service.create"));
     }
@@ -122,7 +123,7 @@ public class AppServiceController {
     }
 
     /**
-     * 项目下启用停用服务信息
+     * 项目下启用停用应用服务
      *
      * @param projectId    项目id
      * @param appServiceId 服务id
@@ -130,7 +131,7 @@ public class AppServiceController {
      * @return Boolean
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下启用停用服务信息")
+    @ApiOperation(value = "项目下启用停用应用服务")
     @PutMapping("/{app_service_id}")
     public ResponseEntity<Boolean> updateActive(
             @ApiParam(value = "项目id", required = true)
@@ -144,6 +145,19 @@ public class AppServiceController {
                 .orElseThrow(() -> new CommonException("error.app.service.active"));
     }
 
+    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
+    @ApiOperation(value = "项目下校验是否能够停用服务")
+    @GetMapping("/check/{app_service_id}")
+    public ResponseEntity<AppServiceMsgVO> checkAppService(
+            @ApiParam(value = "项目id", required = true)
+            @PathVariable(value = "project_id") Long projectId,
+            @ApiParam(value = "服务id", required = true)
+            @PathVariable(value = "app_service_id") Long appServiceId) {
+        return Optional.ofNullable(applicationServiceService.checkAppService(projectId, appServiceId))
+                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+                .orElseThrow(() -> new CommonException("error.app.service.check"));
+    }
+
     /**
      * 项目下删除创建失败服务
      *
@@ -152,7 +166,7 @@ public class AppServiceController {
      * @return Boolean
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下删除创建失败服务")
+    @ApiOperation(value = "项目下删除创建应用服务")
     @DeleteMapping("/{app_service_id}")
     public ResponseEntity delete(
             @ApiParam(value = "项目id", required = true)
@@ -166,16 +180,16 @@ public class AppServiceController {
     /**
      * 项目下分页查询服务
      *
-     * @param projectId   项目id
-     * @param isActive    项目是否启用
-     * @param appMarket   服务市场导入
-     * @param pageRequest 分页参数
-     * @param params      参数
+     * @param projectId 项目id
+     * @param isActive  项目是否启用
+     * @param appMarket 服务市场导入
+     * @param pageable  分页参数
+     * @param params    参数
      * @return Page
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "项目下分页查询服务")
+    @ApiOperation(value = "项目下分页查询应用服务")
     @CustomPageRequest
     @PostMapping("/page_by_options")
     public ResponseEntity<PageInfo<AppServiceRepVO>> pageByOptions(
@@ -192,11 +206,11 @@ public class AppServiceController {
             @ApiParam(value = "是否分页")
             @RequestParam(value = "doPage", required = false) Boolean doPage,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                applicationServiceService.pageByOptions(projectId, isActive, hasVersion, appMarket, type, doPage, pageRequest, params))
+                applicationServiceService.pageByOptions(projectId, isActive, hasVersion, appMarket, type, doPage, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.service.baseList"));
     }
@@ -220,8 +234,8 @@ public class AppServiceController {
             @ApiParam(value = "服务 Id")
             @RequestParam(value = "app_service_id", required = false) Long appServiceId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest) {
-        return Optional.ofNullable(applicationServiceService.pageByIds(projectId, envId, appServiceId, pageRequest))
+            @ApiIgnore Pageable pageable) {
+        return Optional.ofNullable(applicationServiceService.pageByIds(projectId, envId, appServiceId, pageable))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.service.query.ids"));
     }
@@ -290,14 +304,14 @@ public class AppServiceController {
     }
 
     /**
-     * 本项目下或者服务市场在该项目下部署过的服务
+     * 查询在此项目下生成了实例的服务
      *
      * @param projectId 项目id
      * @return List
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "本项目下或者服务市场在该项目下部署过的服务")
+    @ApiOperation(value = "查询在此项目下生成了实例的服务")
     @GetMapping(value = "/list_all")
     public ResponseEntity<List<AppServiceRepVO>> listAll(
             @ApiParam(value = "项目 ID", required = true)
@@ -308,13 +322,13 @@ public class AppServiceController {
     }
 
     /**
-     * 创建服务校验名称是否存在
+     * 创建服务时校验名称是否存在
      *
      * @param projectId 项目id
      * @param name      服务name
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "创建服务校验名称是否存在")
+    @ApiOperation(value = "创建服务时校验名称是否存在")
     @GetMapping(value = "/check_name")
     public void checkName(
             @ApiParam(value = "项目id", required = true)
@@ -325,13 +339,13 @@ public class AppServiceController {
     }
 
     /**
-     * 创建服务校验编码是否存在
+     * 创建服务时校验编码是否存在
      *
      * @param projectId 项目ID
      * @param code      服务code
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "创建服务校验编码是否存在")
+    @ApiOperation(value = "创建服务时校验编码是否存在")
     @GetMapping(value = "/check_code")
     public void checkCode(
             @ApiParam(value = "项目ID", required = true)
@@ -341,24 +355,24 @@ public class AppServiceController {
         applicationServiceService.checkCode(projectId, code);
     }
 
-    /**
-     * 批量校验appServiceCode和appServiceName
-     *
-     * @param projectId              项目ID
-     * @param appServiceBatchCheckVO 服务code
-     */
-    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "批量校验appServiceCode和appServiceName")
-    @PostMapping(value = "/batch_check")
-    public ResponseEntity<AppServiceBatchCheckVO> batchCheck(
-            @ApiParam(value = "项目ID", required = true)
-            @PathVariable(value = "project_id") Long projectId,
-            @ApiParam(value = "校验数据", required = true)
-            @RequestBody AppServiceBatchCheckVO appServiceBatchCheckVO) {
-        return Optional.ofNullable(applicationServiceService.checkCodeByProjectId(projectId, appServiceBatchCheckVO))
-                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException("error.app.service.check"));
-    }
+//    /**
+//     * 批量校验appServiceCode和appServiceName
+//     *
+//     * @param projectId              项目ID
+//     * @param appServiceBatchCheckVO 服务code
+//     */
+//    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
+//    @ApiOperation(value = "批量校验appServiceCode和appServiceName")
+//    @PostMapping(value = "/batch_check")
+//    public ResponseEntity<AppServiceBatchCheckVO> batchCheck(
+//            @ApiParam(value = "项目ID", required = true)
+//            @PathVariable(value = "project_id") Long projectId,
+//            @ApiParam(value = "校验数据", required = true)
+//            @RequestBody AppServiceBatchCheckVO appServiceBatchCheckVO) {
+//        return Optional.ofNullable(applicationServiceService.checkCodeByProjectId(projectId, appServiceBatchCheckVO))
+//                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+//                .orElseThrow(() -> new CommonException("error.app.service.check"));
+//    }
 
     /**
      * 根据服务编码查询服务
@@ -380,36 +394,36 @@ public class AppServiceController {
     }
 
 
-    /**
-     * 项目下查询已经启用有版本未发布的服务
-     *
-     * @param projectId   项目id
-     * @param pageRequest 分页参数
-     * @param params      查询参数
-     * @return Page
-     */
-    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下查询所有已经启用的且未发布的且有版本的服务")
-    @CustomPageRequest
-    @PostMapping(value = "/page_unPublish")
-    public ResponseEntity<PageInfo<AppServiceReqVO>> pageByActiveAndPubAndVersion(
-            @ApiParam(value = "项目 ID", required = true)
-            @PathVariable(value = "project_id") Long projectId,
-            @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
-            @ApiParam(value = "查询参数")
-            @RequestBody(required = false) String params) {
-        return Optional.ofNullable(applicationServiceService.pageByActiveAndPubAndVersion(projectId, pageRequest, params))
-                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException(ERROR_APPLICATION_GET));
-    }
+//    /**
+//     * 项目下查询已经启用有版本未发布的服务
+//     *
+//     * @param projectId 项目id
+//     * @param pageable  分页参数
+//     * @param params    查询参数
+//     * @return Page
+//     */
+//    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
+//    @ApiOperation(value = "项目下查询所有已经启用的且未发布的且有版本的服务")
+//    @CustomPageRequest
+//    @PostMapping(value = "/page_unPublish")
+//    public ResponseEntity<PageInfo<AppServiceReqVO>> pageByActiveAndPubAndVersion(
+//            @ApiParam(value = "项目 ID", required = true)
+//            @PathVariable(value = "project_id") Long projectId,
+//            @ApiParam(value = "分页参数")
+//            @ApiIgnore Pageable pageable,
+//            @ApiParam(value = "查询参数")
+//            @RequestBody(required = false) String params) {
+//        return Optional.ofNullable(applicationServiceService.pageByActiveAndPubAndVersion(projectId, pageable, params))
+//                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+//                .orElseThrow(() -> new CommonException(ERROR_APPLICATION_GET));
+//    }
 
     /**
      * 项目下分页查询代码仓库
      *
-     * @param projectId   项目id
-     * @param pageRequest 分页参数
-     * @param params      参数
+     * @param projectId 项目id
+     * @param pageable  分页参数
+     * @param params    参数
      * @return Page
      */
     @Permission(type = ResourceType.PROJECT,
@@ -423,11 +437,11 @@ public class AppServiceController {
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "分页参数")
             @SortDefault(value = "id", direction = Sort.Direction.DESC)
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                applicationServiceService.pageCodeRepository(projectId, pageRequest, params))
+                applicationServiceService.pageCodeRepository(projectId, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException(ERROR_APPLICATION_GET));
     }
@@ -482,12 +496,12 @@ public class AppServiceController {
 
 
     /**
-     * 校验chart配置信息是否正确
+     * 校验chart仓库配置信息是否正确
      *
      * @param url chartmusume地址
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "校验chart配置信息是否正确")
+    @ApiOperation(value = "校验chart仓库配置信息是否正确")
     @GetMapping(value = "/check_chart")
     public void checkChart(
             @ApiParam(value = "项目id", required = true)
@@ -526,7 +540,7 @@ public class AppServiceController {
      *
      * @param projectId    项目Id
      * @param appServiceId 服务id
-     * @return
+     * @return sonarqube相关信息
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
     @ApiOperation("查看sonarqube相关信息")
@@ -546,7 +560,7 @@ public class AppServiceController {
      *
      * @param projectId    项目Id
      * @param appServiceId 服务id
-     * @return
+     * @return sonarqube相关报表
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
     @ApiOperation("查看sonarqube相关信息")
@@ -568,26 +582,26 @@ public class AppServiceController {
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下查询共享服务")
+    @ApiOperation(value = "项目下分页查询共享服务")
     @CustomPageRequest
     @PostMapping(value = "/page_share_app_service")
     public ResponseEntity<PageInfo<AppServiceRepVO>> pageShareApps(
             @ApiParam(value = "项目ID", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "是否分页")
-            @RequestParam(value = "doPage", required = false,defaultValue = "true") Boolean doPage,
+            @RequestParam(value = "doPage", required = false, defaultValue = "true") Boolean doPage,
             @ApiParam(value = "分页参数")
-            @SortDefault(value = "id", direction = Sort.Direction.DESC) PageRequest pageRequest,
+            @SortDefault(value = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String searchParam) {
         return Optional.ofNullable(
-                applicationServiceService.pageShareAppService(projectId,doPage,pageRequest, searchParam))
+                applicationServiceService.pageShareAppService(projectId, doPage, pageable, searchParam))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.share.app.service.get"));
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "查询拥有服务权限的项目成员及项目所有者")
+    @ApiOperation(value = "查询拥有应用服务权限的用户")
     @CustomPageRequest
     @PostMapping(value = "/{app_service_id}/page_permission_users")
     public ResponseEntity<PageInfo<DevopsUserPermissionVO>> pagePermissionUsers(
@@ -596,33 +610,37 @@ public class AppServiceController {
             @ApiParam(value = "服务服务Id")
             @PathVariable(value = "app_service_id", required = false) Long appServiceId,
             @ApiParam(value = "分页参数")
-            @SortDefault(value = "id", direction = Sort.Direction.DESC) PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String searchParam) {
         return Optional.ofNullable(
-                applicationServiceService.pagePermissionUsers(projectId, appServiceId, pageRequest, searchParam))
+                applicationServiceService.pagePermissionUsers(projectId, appServiceId, pageable, searchParam))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.share.app.service.user.permission.get"));
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "查询没有服务权限的项目成员")
-    @GetMapping(value = "/{app_service_id}/list_non_permission_users")
-    public ResponseEntity<List<DevopsUserPermissionVO>> listNonPermissionUsers(
+    @ApiOperation(value = "查询没有服务应用服务权限的成员")
+    @PostMapping(value = "/{app_service_id}/list_non_permission_users")
+    public ResponseEntity<PageInfo<DevopsUserPermissionVO>> listNonPermissionUsers(
             @ApiParam(value = "项目ID", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "服务服务Id")
             @PathVariable(value = "app_service_id", required = false) Long appServiceId,
+            @ApiParam(value = "分页参数")
+            @ApiIgnore Pageable pageable,
+            @ApiParam(value = "指定的用户Id")
+            @RequestParam(value = "iamUserId", required = false) Long selectedIamUserId,
             @ApiParam(value = "查询参数")
-            @RequestParam(value = "param", required = false) String params) {
+            @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                applicationServiceService.listMembers(projectId, appServiceId, params))
+                applicationServiceService.listMembers(projectId, appServiceId, selectedIamUserId, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.share.app.service.no.user.permission.get"));
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "服务权限更新")
+    @ApiOperation(value = "应用服务权限更新")
     @PostMapping(value = "/{app_service_id}/update_permission")
     public ResponseEntity updatePermission(
             @ApiParam(value = "项目ID", required = true)
@@ -636,7 +654,7 @@ public class AppServiceController {
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "服务权限删除")
+    @ApiOperation(value = "应用服务权限删除")
     @DeleteMapping(value = "/{app_service_id}/delete_permission")
     public ResponseEntity deletePermission(
             @ApiParam(value = "项目ID", required = true)
@@ -667,7 +685,7 @@ public class AppServiceController {
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "导入应用")
+    @ApiOperation(value = "从平台内部导入应用服务")
     @PostMapping(value = "/import/internal")
     public ResponseEntity importAppService(
             @ApiParam(value = "项目ID", required = true)
@@ -687,13 +705,13 @@ public class AppServiceController {
             @ApiParam(value = "市场来源", required = true)
             @RequestParam(required = true) Boolean share,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询项目Id", required = false)
             @RequestParam(value = "search_project_id", required = false) Long searchProjectId,
             @ApiParam(value = "查询条件", required = false)
             @RequestParam(required = false) String param) {
         return Optional.ofNullable(
-                applicationServiceService.pageAppServiceByMode(projectId, share, searchProjectId, param, pageRequest))
+                applicationServiceService.pageAppServiceByMode(projectId, share, searchProjectId, param, pageable))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.list.app.group.error"));
     }
@@ -707,11 +725,11 @@ public class AppServiceController {
             @ApiParam(value = "是否分页")
             @RequestParam(value = "doPage", required = false) Boolean doPage,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                applicationServiceService.listAppByProjectId(projectId, doPage, pageRequest, params))
+                applicationServiceService.listAppByProjectId(projectId, doPage, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.list.app.projectId.query"));
     }
@@ -747,11 +765,11 @@ public class AppServiceController {
             @ApiParam(value = "是否分页")
             @RequestParam(value = "doPage", required = false) Boolean doPage,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                applicationServiceService.listAppServiceByIds(projectId,ids, doPage, pageRequest, params))
+                applicationServiceService.listAppServiceByIds(projectId, ids, doPage, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.list.app.service.ids"));
     }
@@ -768,7 +786,7 @@ public class AppServiceController {
     }
 
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "根据版本Id查询应用服务")
+    @ApiOperation(value = "根据多个版本Id查询多个应用服务")
     @GetMapping(value = "/list_service_by_version_ids")
     public ResponseEntity<List<AppServiceVO>> listServiceByVersionIds(
             @ApiParam(value = "项目Id")
@@ -780,5 +798,18 @@ public class AppServiceController {
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.list.service.by.version.ids"));
     }
+
+    @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
+    @ApiOperation(value = "查询应用服务模板")
+    @GetMapping(value = "/list_service_templates")
+    public ResponseEntity<List<AppServiceTemplateVO>> listServiceTemplates(
+            @ApiParam(value = "项目Id")
+            @PathVariable(value = "project_id") Long projectId) {
+        return Optional.ofNullable(
+                applicationServiceService.listServiceTemplates())
+                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+                .orElseThrow(() -> new CommonException("error.list.service.templates"));
+    }
+
 }
 

@@ -120,40 +120,40 @@ public class DevopsEnvResourceServiceImpl implements DevopsEnvResourceService {
             case SERVICE:
                 V1Service v1Service = json.deserialize(devopsEnvResourceDetailDTO.getMessage(),
                         V1Service.class);
-                DevopsServiceDTO devopsServiceDTO = devopsServiceService.baseQueryByNameAndEnvId(
-                        devopsEnvResourceDTO.getName(), envId);
-                if (devopsServiceDTO != null) {
-                    List<String> domainNames =
-                            devopsIngressService.baseListNameByServiceId(
-                                    devopsServiceDTO.getId());
-                    domainNames.forEach(domainName -> {
-                        DevopsEnvResourceDTO newDevopsEnvResourceDTO =
-                                baseQueryOptions(
-                                        null,
-                                        null,
-                                        envId,
-                                        "Ingress",
-                                        domainName);
-                        //升级0.11.0-0.12.0,资源表新增envId,修复以前的域名数据
-                        if (newDevopsEnvResourceDTO == null) {
-                            newDevopsEnvResourceDTO = baseQueryOptions(
-                                    null,
-                                    null,
-                                    null,
-                                    "Ingress",
-                                    domainName);
-                        }
-                        if (newDevopsEnvResourceDTO != null) {
-                            DevopsEnvResourceDetailDTO newDevopsEnvResourceDetailDTO =
-                                    devopsEnvResourceDetailService.baesQueryByMessageId(
-                                            newDevopsEnvResourceDTO.getResourceDetailId());
-                            V1beta1Ingress v1beta1Ingress = json.deserialize(
-                                    newDevopsEnvResourceDetailDTO.getMessage(),
-                                    V1beta1Ingress.class);
-                            devopsEnvResourceVO.getIngressVOS().add(addIngressToResource(v1beta1Ingress));
-                        }
-                    });
-                }
+//                DevopsServiceDTO devopsServiceDTO = devopsServiceService.baseQueryByNameAndEnvId(
+//                        devopsEnvResourceDTO.getName(), envId);
+//                if (devopsServiceDTO != null) {
+//                    List<String> domainNames =
+//                            devopsIngressService.baseListNameByServiceId(
+//                                    devopsServiceDTO.getId());
+//                    domainNames.forEach(domainName -> {
+//                        DevopsEnvResourceDTO newDevopsEnvResourceDTO =
+//                                baseQueryOptions(
+//                                        null,
+//                                        null,
+//                                        envId,
+//                                        "Ingress",
+//                                        domainName);
+//                        //升级0.11.0-0.12.0,资源表新增envId,修复以前的域名数据
+//                        if (newDevopsEnvResourceDTO == null) {
+//                            newDevopsEnvResourceDTO = baseQueryOptions(
+//                                    null,
+//                                    null,
+//                                    null,
+//                                    "Ingress",
+//                                    domainName);
+//                        }
+//                        if (newDevopsEnvResourceDTO != null) {
+//                            DevopsEnvResourceDetailDTO newDevopsEnvResourceDetailDTO =
+//                                    devopsEnvResourceDetailService.baesQueryByMessageId(
+//                                            newDevopsEnvResourceDTO.getResourceDetailId());
+//                            V1beta1Ingress v1beta1Ingress = json.deserialize(
+//                                    newDevopsEnvResourceDetailDTO.getMessage(),
+//                                    V1beta1Ingress.class);
+//                            devopsEnvResourceVO.getIngressVOS().add(addIngressToResource(v1beta1Ingress));
+//                        }
+//                    });
+//                }
                 addServiceToResource(devopsEnvResourceVO, v1Service);
                 break;
             case INGRESS:
@@ -195,13 +195,15 @@ public class DevopsEnvResourceServiceImpl implements DevopsEnvResourceService {
                 .baseListInstanceCommand(ObjectType.INSTANCE.getType(), instanceId);
         List<Long> userIds = devopsEnvCommandDTOS.stream().filter(devopsEnvCommandDTO -> devopsEnvCommandDTO.getCreatedBy() != 0).map(DevopsEnvCommandDTO::getCreatedBy).collect(Collectors.toList());
         List<IamUserDTO> users = baseServiceClientOperator.listUsersByIds(userIds);
+
         // 查出所有的 DevopsCommandEventDTO 并根据commandId分组
         Set<Long> commandIds = devopsEnvCommandDTOS.stream().map(DevopsEnvCommandDTO::getId).collect(Collectors.toSet());
-        List<DevopsCommandEventDTO> CommandEventTypeJob = devopsCommandEventService.ListByCommandIdsAndType(commandIds, ResourceType.JOB.getType());
-        List<DevopsCommandEventDTO> CommandEventTypePod = devopsCommandEventService.ListByCommandIdsAndType(commandIds, ResourceType.POD.getType());
-        Map<Long, List<DevopsCommandEventDTO>> CommandEventTypeJobMap = CommandEventTypeJob.stream().collect(Collectors.groupingBy(DevopsCommandEventDTO::getCommandId));
-        Map<Long, List<DevopsCommandEventDTO>> CommandEventTypePodJobMap = CommandEventTypePod.stream().collect(Collectors.groupingBy(DevopsCommandEventDTO::getCommandId));
-        devopsEnvCommandDTOS.stream().forEach(devopsEnvCommandDTO -> {
+        List<DevopsCommandEventDTO> commandEventTypeJob = devopsCommandEventService.listByCommandIdsAndType(commandIds, ResourceType.JOB.getType());
+        List<DevopsCommandEventDTO> commandEventTypePod = devopsCommandEventService.listByCommandIdsAndType(commandIds, ResourceType.POD.getType());
+        Map<Long, List<DevopsCommandEventDTO>> commandEventTypeJobMap = commandEventTypeJob.stream().collect(Collectors.groupingBy(DevopsCommandEventDTO::getCommandId));
+        Map<Long, List<DevopsCommandEventDTO>> commandEventTypePodJobMap = commandEventTypePod.stream().collect(Collectors.groupingBy(DevopsCommandEventDTO::getCommandId));
+
+        devopsEnvCommandDTOS.forEach(devopsEnvCommandDTO -> {
             InstanceEventVO instanceEventVO = new InstanceEventVO();
             Optional<IamUserDTO> iamUserDTO = users.stream().filter(user -> user.getId().equals(devopsEnvCommandDTO.getCreatedBy())).findFirst();
             IamUserDTO iamUser = null;
@@ -210,13 +212,15 @@ public class DevopsEnvResourceServiceImpl implements DevopsEnvResourceService {
                 instanceEventVO.setLoginName(iamUser.getLdap() ? iamUser.getLoginName() : iamUser.getEmail());
                 instanceEventVO.setRealName(iamUser.getRealName());
             }
+            instanceEventVO.setCommandId(devopsEnvCommandDTO.getId());
             instanceEventVO.setStatus(devopsEnvCommandDTO.getStatus());
+            instanceEventVO.setCommandError(devopsEnvCommandDTO.getError());
             instanceEventVO.setUserImage(iamUser == null ? null : iamUser.getImageUrl());
             instanceEventVO.setCreateTime(devopsEnvCommandDTO.getCreationDate());
             instanceEventVO.setType(devopsEnvCommandDTO.getCommandType());
             List<PodEventVO> podEventVOS = new ArrayList<>();
             //获取实例中job的event
-            List<DevopsCommandEventDTO> devopsCommandEventDTOS = CommandEventTypeJobMap.get(devopsEnvCommandDTO.getId());
+            List<DevopsCommandEventDTO> devopsCommandEventDTOS = commandEventTypeJobMap.get(devopsEnvCommandDTO.getId());
             if (!CollectionUtils.isEmpty(devopsCommandEventDTOS)) {
                 LinkedHashMap<String, String> jobEvents = getDevopsCommandEvent(devopsCommandEventDTOS);
                 jobEvents.forEach((key, value) -> {
@@ -256,7 +260,7 @@ public class DevopsEnvResourceServiceImpl implements DevopsEnvResourceService {
                 }
             }
             //获取实例中pod的event
-            List<DevopsCommandEventDTO> devopsCommandPodEventES = CommandEventTypePodJobMap.get(devopsEnvCommandDTO.getId());
+            List<DevopsCommandEventDTO> devopsCommandPodEventES = commandEventTypePodJobMap.get(devopsEnvCommandDTO.getId());
             if (!CollectionUtils.isEmpty(devopsCommandPodEventES)) {
                 LinkedHashMap<String, String> podEvents = getDevopsCommandEvent(devopsCommandPodEventES);
                 int index = 0;
@@ -402,13 +406,14 @@ public class DevopsEnvResourceServiceImpl implements DevopsEnvResourceService {
      *
      * @param v1beta1Ingress ingress对象
      */
-    public IngressVO addIngressToResource(V1beta1Ingress v1beta1Ingress) {
+    private IngressVO addIngressToResource(V1beta1Ingress v1beta1Ingress) {
         IngressVO ingressVO = new IngressVO();
         ingressVO.setName(v1beta1Ingress.getMetadata().getName());
         ingressVO.setHosts(K8sUtil.formatHosts(v1beta1Ingress.getSpec().getRules()));
         ingressVO.setPorts(K8sUtil.formatPorts(v1beta1Ingress.getSpec().getTls()));
         ingressVO.setAddress(K8sUtil.loadBalancerStatusStringer(v1beta1Ingress.getStatus().getLoadBalancer()));
         ingressVO.setAge(v1beta1Ingress.getMetadata().getCreationTimestamp().toString());
+        ingressVO.setServices(K8sUtil.analyzeIngressServices(v1beta1Ingress));
         return ingressVO;
     }
 

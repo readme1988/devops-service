@@ -12,9 +12,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import org.springframework.data.domain.Pageable;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.devops.api.vo.iam.AppServiceAndVersionVO;
 import io.choerodon.devops.app.eventhandler.payload.*;
@@ -32,12 +32,6 @@ public class OrgAppMarketController {
     @Autowired
     private OrgAppMarketService orgAppMarketService;
 
-    /**
-     * @param appId
-     * @param pageRequest
-     * @param params
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "根据应用Id，获取应用服务和应用服务版本")
     @CustomPageRequest
@@ -46,19 +40,15 @@ public class OrgAppMarketController {
             @ApiParam(value = "应用Id", required = true)
             @RequestParam(value = "app_id") Long appId,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数", required = false)
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(
-                orgAppMarketService.pageByAppId(appId, pageRequest, params))
+                orgAppMarketService.pageByAppId(appId, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.services.page"));
     }
 
-    /**
-     * @param appServiceId
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "根据应用服务ID查询所对应的应用版本")
     @GetMapping("/list_versions/{app_service_id}")
@@ -72,10 +62,6 @@ public class OrgAppMarketController {
     }
 
 
-    /**
-     * @param appMarketUploadVO
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "应用上传")
     @PostMapping("/upload")
@@ -86,10 +72,6 @@ public class OrgAppMarketController {
         return new ResponseEntity(HttpStatus.NO_CONTENT);
     }
 
-    /**
-     * @param appMarketFixVersionPayload
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "应用上传 版本修复")
     @PostMapping("/upload_fix_version")
@@ -100,10 +82,6 @@ public class OrgAppMarketController {
         return new ResponseEntity(HttpStatus.NO_CONTENT);
     }
 
-    /**
-     * @param applicationPayload
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "应用下载")
     @PostMapping("/download")
@@ -114,10 +92,6 @@ public class OrgAppMarketController {
         return new ResponseEntity(HttpStatus.NO_CONTENT);
     }
 
-    /**
-     * @param versionVOList
-     * @return
-     */
     @Permission(type = ResourceType.SITE, permissionWithin = true)
     @ApiOperation(value = "查询应用服务版本")
     @PostMapping("/list_versions")

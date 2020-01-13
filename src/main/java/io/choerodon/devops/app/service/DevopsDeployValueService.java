@@ -2,7 +2,8 @@ package io.choerodon.devops.app.service;
 
 import com.github.pagehelper.PageInfo;
 
-import io.choerodon.base.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
 import io.choerodon.devops.api.vo.DevopsDeployValueVO;
 import io.choerodon.devops.infra.dto.DevopsDeployValueDTO;
 
@@ -38,11 +39,11 @@ public interface DevopsDeployValueService {
      * @param projectId    项目id
      * @param appServiceId 应用服务id
      * @param envId        环境id
-     * @param pageRequest  分页参数
+     * @param pageable     分页参数
      * @param params       查询参数
      * @return 分页的部署配置
      */
-    PageInfo<DevopsDeployValueVO> pageByOptions(Long projectId, Long appServiceId, Long envId, PageRequest pageRequest, String params);
+    PageInfo<DevopsDeployValueVO> pageByOptions(Long projectId, Long appServiceId, Long envId, Pageable pageable, String params);
 
     /**
      * 项目下查询配置详情
@@ -54,13 +55,14 @@ public interface DevopsDeployValueService {
     DevopsDeployValueVO query(Long pipelineId, Long valueId);
 
     /**
-     * 名称校验
+     * 校验部署配置的名称在环境下唯一
      *
      * @param projectId     项目id
      * @param name          待校验的名称
-     * @param deployValueId deployValueId
+     * @param deployValueId 部署配置id, 用于在更新部署配置时的校验排除自身
+     * @param envId         环境id
      */
-    void checkName(Long projectId, String name, Long deployValueId);
+    void checkName(Long projectId, String name, Long deployValueId, Long envId);
 
     /**
      * 根据应用服务Id和环境Id获取配置
@@ -81,7 +83,9 @@ public interface DevopsDeployValueService {
      */
     Boolean checkDelete(Long projectId, Long valueId);
 
-    PageInfo<DevopsDeployValueDTO> basePageByOptions(Long projectId, Long appServiceId, Long envId, Long userId, PageRequest pageRequest, String params);
+    PageInfo<DevopsDeployValueDTO> basePageByOptionsWithOwner(Long projectId, Long appServiceId, Long envId, Long userId, Pageable pageable, String params);
+
+    PageInfo<DevopsDeployValueDTO> basePageByOptionsWithMember(Long projectId, Long appServiceId, Long envId, Long userId, Pageable pageable, String params);
 
     DevopsDeployValueDTO baseCreateOrUpdate(DevopsDeployValueDTO pipelineRecordE);
 
@@ -89,7 +93,12 @@ public interface DevopsDeployValueService {
 
     DevopsDeployValueDTO baseQueryById(Long valueId);
 
-    void baseCheckName(Long projectId, String name, Long deployValueId);
-
     List<DevopsDeployValueDTO> baseQueryByAppIdAndEnvId(Long projectId, Long appServiceId, Long envId);
+
+    /**
+     * 根据环境id删除所有相关的部署配置
+     *
+     * @param envId 环境id
+     */
+    void deleteByEnvId(Long envId);
 }

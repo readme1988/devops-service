@@ -1,10 +1,13 @@
 package io.choerodon.devops.app.service.impl;
 
 import java.util.List;
-import java.util.stream.Collectors;
-
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.devops.api.validator.DevopsEnvGroupValidator;
@@ -12,12 +15,9 @@ import io.choerodon.devops.api.vo.DevopsEnvGroupVO;
 import io.choerodon.devops.app.service.DevopsEnvGroupService;
 import io.choerodon.devops.app.service.DevopsEnvironmentService;
 import io.choerodon.devops.infra.dto.DevopsEnvGroupDTO;
-import io.choerodon.devops.infra.dto.DevopsEnvironmentDTO;
 import io.choerodon.devops.infra.mapper.DevopsEnvGroupMapper;
 import io.choerodon.devops.infra.util.ConvertUtils;
-
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
+import io.choerodon.devops.infra.util.MapperUtil;
 
 /**
  * Creator: Runge
@@ -78,6 +78,7 @@ public class DevopsEnvGroupServiceImpl implements DevopsEnvGroupService {
         }
     }
 
+    @Transactional(rollbackFor = Exception.class, propagation = Propagation.REQUIRED)
     @Override
     public void delete(Long id) {
         DevopsEnvGroupDTO devopsEnvGroupDTO = baseQuery(id);
@@ -87,20 +88,13 @@ public class DevopsEnvGroupServiceImpl implements DevopsEnvGroupService {
         }
 
         baseDelete(id);
-        //删除环境组，将原环境组内所有环境放到默认组内
-        List<DevopsEnvironmentDTO> devopsEnvironmentDTOS = devopsEnvironmentService.baseListByProjectIdAndActive(devopsEnvGroupDTO.getProjectId(), true);
-
-        List<DevopsEnvironmentDTO> deletes = devopsEnvironmentDTOS.stream().filter(devopsEnvironmentDTO -> id.equals(devopsEnvironmentDTO.getDevopsEnvGroupId())).collect(Collectors.toList());
-        for (DevopsEnvironmentDTO devopsEnvironmentDTO : deletes) {
-            devopsEnvironmentDTO.setDevopsEnvGroupId(null);
-            devopsEnvironmentService.baseUpdate(devopsEnvironmentDTO);
-        }
+        //删除环境组，将原环境组内所有环境的env_group_id置为null
+        devopsEnvironmentService.updateDevopsEnvGroupIdNullByProjectIdAndGroupId(devopsEnvGroupDTO.getProjectId(), id);
     }
 
     @Override
     public DevopsEnvGroupDTO baseCreate(DevopsEnvGroupDTO devopsEnvGroupDTO) {
-        devopsEnvGroupMapper.insert(devopsEnvGroupDTO);
-        return devopsEnvGroupDTO;
+        return MapperUtil.resultJudgedInsert(devopsEnvGroupMapper, devopsEnvGroupDTO, "error.insert.env.group");
     }
 
     @Override

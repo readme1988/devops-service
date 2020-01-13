@@ -3,8 +3,8 @@ package io.choerodon.devops.app.service;
 import java.util.List;
 
 import com.github.pagehelper.PageInfo;
+import org.springframework.data.domain.Pageable;
 
-import io.choerodon.base.domain.PageRequest;
 import io.choerodon.devops.api.vo.DevopsServiceReqVO;
 import io.choerodon.devops.api.vo.DevopsServiceVO;
 import io.choerodon.devops.app.eventhandler.payload.ServiceSagaPayLoad;
@@ -84,11 +84,11 @@ public interface DevopsServiceService {
     /**
      * 分页查询网络列表
      *
-     * @param envId 参数
+     * @param envId        参数
      * @param appServiceId app应用id
      * @return List of DevopsServiceVO
      */
-    List<DevopsServiceVO> listByEnvIdAndAppServiceId(Long envId,Long appServiceId);
+    List<DevopsServiceVO> listByEnvIdAndAppServiceId(Long envId, Long appServiceId);
 
     /**
      * 查询单个网络
@@ -103,12 +103,12 @@ public interface DevopsServiceService {
      *
      * @param projectId    项目id
      * @param envId        环境id
-     * @param pageRequest  分页参数
+     * @param pageable     分页参数
      * @param searchParam  查询参数
      * @param appServiceId 应用服务id（如果有就是查询应用下的网络域名）
      * @return Page of DevopsServiceVO
      */
-    PageInfo<DevopsServiceVO> pageByEnv(Long projectId, Long envId, PageRequest pageRequest, String searchParam, Long appServiceId);
+    PageInfo<DevopsServiceVO> pageByEnv(Long projectId, Long envId, Pageable pageable, String searchParam, Long appServiceId);
 
 
     /**
@@ -126,12 +126,12 @@ public interface DevopsServiceService {
      * @param projectId    项目id
      * @param envId        环境id
      * @param instanceId   实例Id
-     * @param pageRequest  分页参数
+     * @param pageable     分页参数
      * @param appServiceId 应用id
      * @param searchParam  查询参数
      * @return Page of DevopsServiceVO
      */
-    PageInfo<DevopsServiceVO> pageByInstance(Long projectId, Long envId, Long instanceId, PageRequest pageRequest, Long appServiceId, String searchParam);
+    PageInfo<DevopsServiceVO> pageByInstance(Long projectId, Long envId, Long instanceId, Pageable pageable, Long appServiceId, String searchParam);
 
     /**
      * 查看网络信息时，展示网络对应实例的Pod实时数据
@@ -147,7 +147,7 @@ public interface DevopsServiceService {
 
     Boolean baseCheckName(Long envId, String name);
 
-    PageInfo<DevopsServiceQueryDTO> basePageByOptions(Long projectId, Long envId, Long instanceId, PageRequest pageRequest,
+    PageInfo<DevopsServiceQueryDTO> basePageByOptions(Long projectId, Long envId, Long instanceId, Pageable pageable,
                                                       String searchParam, Long appServiceId);
 
     List<DevopsServiceDTO> baseListByEnvId(Long envId);
@@ -158,7 +158,7 @@ public interface DevopsServiceService {
 
     void baseUpdate(DevopsServiceDTO devopsServiceDTO);
 
-    void baseUpdateLabels(Long id);
+    void baseUpdateSelectors(Long id);
 
     void baseUpdateEndPoint(Long id);
 

@@ -1,6 +1,6 @@
 package io.choerodon.devops.api.controller.v1;
 
-import io.choerodon.base.annotation.Permission;
+import io.choerodon.core.annotation.Permission;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.devops.api.vo.SonarInfoVO;
 import io.choerodon.devops.app.service.SonarService;
@@ -25,13 +25,8 @@ public class SonarController {
     @Autowired
     private SonarService sonarService;
 
-    /**
-     * 用于获取sonar Admin用户
-     *
-     * @return
-     */
     @Permission(permissionPublic = true)
-    @ApiOperation(value = "触发自动部署")
+    @ApiOperation(value = "用于获取sonar Admin用户,触发自动部署")
     @GetMapping("/info")
     public ResponseEntity<SonarInfoVO> getSonarInfo() {
         return Optional.ofNullable(sonarService.getSonarInfo())

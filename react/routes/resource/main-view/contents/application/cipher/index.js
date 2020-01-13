@@ -13,6 +13,7 @@ import ClickText from '../../../../../../components/click-text';
 import { useMainStore } from '../../../stores';
 
 import '../configs/index.less';
+import StatusIcon from '../../../../../../components/StatusIcon';
 
 const { Column } = Table;
 const modalKey = Modal.key();
@@ -64,18 +65,17 @@ const Cipher = observer(() => {
 
   function renderName({ value, record }) {
     const commandStatus = record.get('commandStatus');
+    const error = record.get('error');
     const disabled = getEnvIsNotRunning() || commandStatus === 'operating';
     return (
-      <div>
-        <StatusTags
-          name={formatMessage({ id: commandStatus || 'null' })}
-          colorCode={commandStatus || 'success'}
-          style={statusStyle}
-        />
-        <ClickText
-          value={value}
+      <div className={`${prefixCls}-keyValue-name`}>
+        <StatusIcon
+          width={0.4}
+          name={value}
           clickAble={!disabled}
           onClick={handleEdit}
+          status={commandStatus || ''}
+          error={error || ''}
           record={record}
           permissionCode={['devops-service.devops-secret.update']}
         />
@@ -121,10 +121,10 @@ const Cipher = observer(() => {
           border={false}
           queryBar="bar"
         >
-          <Column name="name" header={formatMessage({ id: `${intlPrefix}.application.tabs.cipher` })} renderer={renderName} />
+          <Column sortable name="name" header={formatMessage({ id: `${intlPrefix}.application.tabs.cipher` })} renderer={renderName} />
           <Column renderer={renderAction} width="0.7rem" />
           <Column name="key" renderer={renderKey} />
-          <Column name="lastUpdateDate" renderer={renderDate} width="1rem" />
+          <Column sortable name="lastUpdateDate" renderer={renderDate} width="1rem" />
         </Table>
       </div>
     </div>

@@ -4,7 +4,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 
-import io.choerodon.base.annotation.Permission;
+import io.choerodon.core.annotation.Permission;
 import io.choerodon.devops.app.service.AppServiceInstanceService;
 import io.choerodon.devops.app.service.GitlabWebHookService;
 
@@ -43,10 +43,6 @@ public class GitlabWebHookController {
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
-    /**
-     * 查询自动化测试应用实例状态
-     * @param testReleases
-     */
     @ApiOperation(value = "查询自动化测试应用实例状态")
     @Permission(permissionPublic = true)
     @PostMapping("/get_test_status")

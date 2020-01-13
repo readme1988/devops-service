@@ -7,8 +7,17 @@ import java.util.stream.Collectors;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.common.collect.Lists;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.domain.Sort;
+import io.kubernetes.client.JSON;
+import io.kubernetes.client.models.V1Pod;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
 import io.choerodon.devops.api.vo.ContainerVO;
 import io.choerodon.devops.api.vo.DevopsEnvPodInfoVO;
 import io.choerodon.devops.api.vo.DevopsEnvPodVO;
@@ -19,15 +28,6 @@ import io.choerodon.devops.infra.enums.ResourceType;
 import io.choerodon.devops.infra.handler.ClusterConnectionHandler;
 import io.choerodon.devops.infra.mapper.DevopsEnvPodMapper;
 import io.choerodon.devops.infra.util.*;
-import io.kubernetes.client.JSON;
-import io.kubernetes.client.models.V1Pod;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.util.CollectionUtils;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 /**
  * Created by Zenger on 2018/4/17.
@@ -58,9 +58,9 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
     private UserAttrService userAttrService;
 
     @Override
-    public PageInfo<DevopsEnvPodVO> pageByOptions(Long projectId, Long envId, Long appServiceId, Long instanceId, PageRequest pageRequest, String searchParam) {
+    public PageInfo<DevopsEnvPodVO> pageByOptions(Long projectId, Long envId, Long appServiceId, Long instanceId, Pageable pageable, String searchParam) {
         List<Long> updatedEnvList = clusterConnectionHandler.getUpdatedClusterList();
-        PageInfo<DevopsEnvPodDTO> devopsEnvPodDTOPageInfo = basePageByIds(projectId, envId, appServiceId, instanceId, pageRequest, searchParam);
+        PageInfo<DevopsEnvPodDTO> devopsEnvPodDTOPageInfo = basePageByIds(projectId, envId, appServiceId, instanceId, pageable, searchParam);
         PageInfo<DevopsEnvPodVO> devopsEnvPodVOPageInfo = ConvertUtils.convertPage(devopsEnvPodDTOPageInfo, DevopsEnvPodVO.class);
 
         devopsEnvPodVOPageInfo.setList(devopsEnvPodDTOPageInfo.getList().stream().map(devopsEnvPodDTO -> {
@@ -135,7 +135,7 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
         envPodDTO.setName(devopsEnvPodDTO.getName());
         envPodDTO.setNamespace(devopsEnvPodDTO.getNamespace());
         if (devopsEnvPodMapper.selectOne(envPodDTO) == null) {
-            devopsEnvPodMapper.insert(devopsEnvPodDTO);
+            MapperUtil.resultJudgedInsert(devopsEnvPodMapper, devopsEnvPodDTO, "error.insert.env.pod");
         }
     }
 
@@ -152,12 +152,12 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
     }
 
     @Override
-    public PageInfo<DevopsEnvPodDTO> basePageByIds(Long projectId, Long envId, Long appServiceId, Long instanceId, PageRequest pageRequest, String searchParam) {
+    public PageInfo<DevopsEnvPodDTO> basePageByIds(Long projectId, Long envId, Long appServiceId, Long instanceId, Pageable pageable, String searchParam) {
 
-        Sort sort = pageRequest.getSort();
+        Sort sort = pageable.getSort();
         String sortResult = "";
         if (sort != null) {
-            sortResult = Lists.newArrayList(pageRequest.getSort().iterator()).stream()
+            sortResult = Lists.newArrayList(pageable.getSort().iterator()).stream()
                     .map(t -> {
                         String property = t.getProperty();
                         if (property.equals("name")) {
@@ -176,7 +176,7 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
         if (!org.apache.commons.lang.StringUtils.isEmpty(searchParam)) {
             Map<String, Object> searchParamMap = json.deserialize(searchParam, Map.class);
             devopsEnvPodDOPage = PageHelper.startPage(
-                    pageRequest.getPage(), pageRequest.getSize(), sortResult).doSelectPageInfo(() -> devopsEnvPodMapper.listAppServicePod(
+                    pageable.getPageNumber(), pageable.getPageSize(), sortResult).doSelectPageInfo(() -> devopsEnvPodMapper.listAppServicePod(
                     projectId,
                     envId,
                     appServiceId,
@@ -185,7 +185,7 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
                     TypeUtil.cast(searchParamMap.get(TypeUtil.PARAMS))));
         } else {
             devopsEnvPodDOPage = PageHelper.startPage(
-                    pageRequest.getPage(), pageRequest.getSize(), sortResult).doSelectPageInfo(() -> devopsEnvPodMapper.listAppServicePod(projectId, envId, appServiceId, instanceId, null, null));
+                    pageable.getPageNumber(), pageable.getPageSize(), sortResult).doSelectPageInfo(() -> devopsEnvPodMapper.listAppServicePod(projectId, envId, appServiceId, instanceId, null, null));
         }
 
         return devopsEnvPodDOPage;
@@ -215,6 +215,28 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
         return devopsEnvPodMapper.selectOne(devopsEnvPodDTO);
     }
 
+    private static Map<String, DevopsEnvResourceDTO> listToMap(List<DevopsEnvResourceDTO> resources) {
+        Map<String, DevopsEnvResourceDTO> map = new HashMap<>();
+        for (DevopsEnvResourceDTO resource : resources) {
+            if (map.get(resource.getName()) == null) {
+                map.put(resource.getName(), resource);
+            } else {
+                map.put(resource.getName(), compareRevision(map.get(resource.getName()), resource));
+            }
+        }
+        return map;
+    }
+
+    private static DevopsEnvResourceDTO compareRevision(DevopsEnvResourceDTO one, DevopsEnvResourceDTO theOther) {
+        if (one == null || one.getReversion() == null) {
+            return theOther;
+        }
+        if (theOther == null || theOther.getReversion() == null) {
+            return one;
+        }
+        return one.getReversion() > theOther.getReversion() ? one : theOther;
+    }
+
     @Override
     public List<DevopsEnvPodInfoVO> queryEnvPodInfo(Long envId, String sort) {
         DevopsEnvironmentDTO devopsEnvironmentDTO = devopsEnvironmentService.baseQueryById(envId);
@@ -223,9 +245,9 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
 
         // 根据devopsEnvPodInfoVOList获取name集合，批量查询devopsEnvResourceDTO和DevopsEnvResourceDetailDTO
         List<String> podNames = devopsEnvPodInfoVOList.stream().map(DevopsEnvPodInfoVO::getName).collect(Collectors.toList());
-        List<DevopsEnvResourceDTO> devopsEnvResourceDTOList = devopsEnvResourceService.listEnvResourceByOptions(envId, ResourceType.POD.getType(),podNames);
+        List<DevopsEnvResourceDTO> devopsEnvResourceDTOList = devopsEnvResourceService.listEnvResourceByOptions(envId, ResourceType.POD.getType(), podNames);
         Set<Long> resourceDetailIds = devopsEnvResourceDTOList.stream().map(DevopsEnvResourceDTO::getResourceDetailId).collect(Collectors.toSet());
-        Map<String, DevopsEnvResourceDTO> devopsEnvResourceMap = devopsEnvResourceDTOList.stream().collect(Collectors.toMap(DevopsEnvResourceDTO::getName, Function.identity()));
+        Map<String, DevopsEnvResourceDTO> devopsEnvResourceMap = listToMap(devopsEnvResourceDTOList);
         List<DevopsEnvResourceDetailDTO> devopsEnvResourceDetailDTOS = devopsEnvResourceDetailService.listByMessageIds(resourceDetailIds);
         Map<Long, DevopsEnvResourceDetailDTO> devopsEnvResourceDetailMap = devopsEnvResourceDetailDTOS.stream().collect(Collectors.toMap(DevopsEnvResourceDetailDTO::getId, Function.identity()));
 
@@ -235,10 +257,10 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
             DevopsEnvResourceDetailDTO devopsEnvResourceDetailDTO = devopsEnvResourceDetailMap.get(devopsEnvResourceDTO.getResourceDetailId());
             V1Pod v1Pod = json.deserialize(devopsEnvResourceDetailDTO.getMessage(), V1Pod.class);
             devopsEnvPodInfoVO.setStatus(K8sUtil.changePodStatus(v1Pod));
+            devopsEnvPodInfoVO.setPodIp(v1Pod == null ? null : v1Pod.getStatus().getPodIP());
             if (podMetricsRedisInfoVO != null) {
                 devopsEnvPodInfoVO.setCpuUsed(podMetricsRedisInfoVO.getCpu());
                 devopsEnvPodInfoVO.setMemoryUsed(podMetricsRedisInfoVO.getMemory());
-                devopsEnvPodInfoVO.setPodIp(v1Pod == null ? null : v1Pod.getStatus().getPodIP());
             }
         });
 
@@ -272,7 +294,6 @@ public class DevopsEnvPodServiceImpl implements DevopsEnvPodService {
         UserAttrDTO userAttrDTO = userAttrService.baseQueryById(TypeUtil.objToLong(GitUserNameUtil.getUserId()));
         devopsEnvironmentService.checkEnv(devopsEnvironmentDTO, userAttrDTO);
 
-        // Todo:和agent通信
-        agentCommandService.deletePod(devopsEnvPodDTO);
+        agentCommandService.deletePod(devopsEnvPodDTO.getName(), devopsEnvironmentDTO.getCode(), devopsEnvironmentDTO.getClusterId());
     }
 }

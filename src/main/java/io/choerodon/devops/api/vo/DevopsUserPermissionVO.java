@@ -1,13 +1,17 @@
 package io.choerodon.devops.api.vo;
 
 import java.util.Date;
+import java.util.List;
+
+import io.choerodon.devops.infra.dto.iam.RoleDTO;
 
 /**
  * @author zmf
  */
 public class DevopsUserPermissionVO extends DevopsEnvUserVO {
-    private String role;
+    private List<RoleDTO> roles;
     private Date creationDate;
+    private Boolean gitlabProjectOwner;
 
     public DevopsUserPermissionVO() {
     }
@@ -15,17 +19,30 @@ public class DevopsUserPermissionVO extends DevopsEnvUserVO {
     public DevopsUserPermissionVO(Long iamUserId, String loginName, String realName) {
         super(iamUserId, loginName, realName);
     }
-    public DevopsUserPermissionVO(Long iamUserId, String loginName, String realName,Date creationDate) {
+
+    public DevopsUserPermissionVO(Long iamUserId, String loginName, String realName, Date creationDate) {
         super(iamUserId, loginName, realName);
-        this.creationDate=creationDate;
+        this.creationDate = creationDate;
     }
 
-    public String getRole() {
-        return role;
+    public DevopsUserPermissionVO(Long iamUserId, String loginName, String realName, String imageUrl) {
+        super(iamUserId, loginName, realName, imageUrl);
     }
 
-    public void setRole(String role) {
-        this.role = role;
+    public List<RoleDTO> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(List<RoleDTO> roles) {
+        this.roles = roles;
+    }
+
+    public Boolean getGitlabProjectOwner() {
+        return gitlabProjectOwner;
+    }
+
+    public void setGitlabProjectOwner(Boolean gitlabProjectOwner) {
+        this.gitlabProjectOwner = gitlabProjectOwner;
     }
 
     public Date getCreationDate() {

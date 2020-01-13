@@ -1,5 +1,6 @@
 package io.choerodon.devops.app.eventhandler;
 
+import java.util.Collections;
 import java.util.List;
 
 import com.alibaba.fastjson.JSONObject;
@@ -16,6 +17,8 @@ import io.choerodon.asgard.saga.annotation.SagaTask;
 import io.choerodon.devops.api.vo.GitlabGroupMemberVO;
 import io.choerodon.devops.api.vo.GitlabUserRequestVO;
 import io.choerodon.devops.api.vo.GitlabUserVO;
+import io.choerodon.devops.api.vo.iam.AssignAdminVO;
+import io.choerodon.devops.api.vo.iam.DeleteAdminVO;
 import io.choerodon.devops.app.eventhandler.constants.SagaTaskCodeConstants;
 import io.choerodon.devops.app.eventhandler.constants.SagaTopicCodeConstants;
 import io.choerodon.devops.app.eventhandler.payload.*;
@@ -57,7 +60,7 @@ public class SagaHandler {
      * 创建组事件，消费创建项目事件
      */
     @SagaTask(code = SagaTaskCodeConstants.DEVOPS_CREATE_GITLAB_GROUP,
-            description = "devops 创建对应项目的两个Group",
+            description = "devops 创建对应项目的三个Group",
             sagaCode = SagaTopicCodeConstants.IAM_CREATE_PROJECT,
             maxRetryCount = 3,
             seq = 1)
@@ -74,7 +77,7 @@ public class SagaHandler {
      * 更新项目事件，为项目更新组
      */
     @SagaTask(code = SagaTaskCodeConstants.DEVOPS_UPDATE_GITLAB_GROUP,
-            description = "devops更新项目对应的两个GitLab组",
+            description = "devops更新项目对应的三个GitLab组",
             sagaCode = SagaTopicCodeConstants.IAM_UPDATE_PROJECT,
             maxRetryCount = 3,
             seq = 1)
@@ -220,6 +223,28 @@ public class SagaHandler {
         loggerInfo(gitlabUserVO);
 
         gitlabUserService.disEnabledGitlabUser(TypeUtil.objToInteger(gitlabUserVO.getId()));
+        return payload;
+    }
+
+    @SagaTask(code = SagaTaskCodeConstants.DEVOPS_ADD_ADMIN,
+            description = "创建Root用户事件",
+            sagaCode = SagaTopicCodeConstants.ASSIGN_ADMIN,
+            maxRetryCount = 3,
+            seq = 1)
+    public String handleAssignAdminEvent(String payload) {
+        AssignAdminVO assignAdminVO = JSONObject.parseObject(payload, AssignAdminVO.class);
+        gitlabUserService.assignAdmins(assignAdminVO == null ? Collections.emptyList() : assignAdminVO.getAdminUserIds());
+        return payload;
+    }
+
+    @SagaTask(code = SagaTaskCodeConstants.DEVOPS_DELETE_ADMIN,
+            description = "删除Root用户事件",
+            sagaCode = SagaTopicCodeConstants.DELETE_ADMIN,
+            maxRetryCount = 3,
+            seq = 1)
+    public String handleDeleteAdminEvent(String payload) {
+        DeleteAdminVO deleteAdminVO= JSONObject.parseObject(payload, DeleteAdminVO.class);
+        gitlabUserService.deleteAdmin(deleteAdminVO == null ? null : deleteAdminVO.getAdminUserId());
         return payload;
     }
 

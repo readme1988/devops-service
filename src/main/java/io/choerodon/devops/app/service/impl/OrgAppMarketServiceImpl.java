@@ -8,10 +8,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.github.pagehelper.PageHelper;
 import com.github.pagehelper.PageInfo;
 import com.google.gson.Gson;
-import io.choerodon.asgard.saga.annotation.Saga;
-import io.choerodon.asgard.saga.producer.StartSagaBuilder;
-import io.choerodon.core.iam.ResourceLevel;
-import io.choerodon.devops.app.eventhandler.constants.SagaTopicCodeConstants;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
@@ -24,21 +20,24 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import retrofit2.Call;
 import retrofit2.Response;
 import retrofit2.Retrofit;
 
+import io.choerodon.asgard.saga.annotation.Saga;
+import io.choerodon.asgard.saga.producer.StartSagaBuilder;
 import io.choerodon.asgard.saga.producer.TransactionalProducer;
-import io.choerodon.base.domain.PageRequest;
 import io.choerodon.core.exception.CommonException;
+import io.choerodon.core.iam.ResourceLevel;
 import io.choerodon.devops.api.validator.ApplicationValidator;
 import io.choerodon.devops.api.vo.ConfigVO;
 import io.choerodon.devops.api.vo.iam.*;
 import io.choerodon.devops.api.vo.kubernetes.MockMultipartFile;
+import io.choerodon.devops.app.eventhandler.constants.SagaTopicCodeConstants;
 import io.choerodon.devops.app.eventhandler.payload.*;
 import io.choerodon.devops.app.service.*;
 import io.choerodon.devops.infra.config.ConfigurationProperties;
@@ -133,6 +132,8 @@ public class OrgAppMarketServiceImpl implements OrgAppMarketService {
     private GitlabGroupService gitlabGroupService;
     @Autowired
     private MarketServiceClientOperator marketServiceClientOperator;
+    @Autowired
+    private AppServiceInstanceService appServiceInstanceService;
 
     /**
      * 执行pull/push脚本
@@ -173,14 +174,14 @@ public class OrgAppMarketServiceImpl implements OrgAppMarketService {
 
     @Override
     public PageInfo<AppServiceUploadPayload> pageByAppId(Long appId,
-                                                         PageRequest pageRequest,
+                                                         Pageable pageable,
                                                          String params) {
         Map<String, Object> mapParams = TypeUtil.castMapParams(params);
         List<String> paramList = TypeUtil.cast(mapParams.get(TypeUtil.PARAMS));
         PageInfo<AppServiceDTO> appServiceDTOPageInfo = PageHelper.startPage(
-                pageRequest.getPage(),
-                pageRequest.getSize(),
-                PageRequestUtil.getOrderBy(pageRequest)).doSelectPageInfo(() -> appServiceMapper.listByProjectId(appId, TypeUtil.cast(mapParams.get(TypeUtil.SEARCH_PARAM)), paramList));
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                PageRequestUtil.getOrderBy(pageable)).doSelectPageInfo(() -> appServiceMapper.listByProjectId(appId, TypeUtil.cast(mapParams.get(TypeUtil.SEARCH_PARAM)), paramList));
 
         PageInfo<AppServiceUploadPayload> appServiceMarketVOPageInfo = ConvertUtils.convertPage(appServiceDTOPageInfo, this::dtoToMarketVO);
         List<AppServiceUploadPayload> list = appServiceMarketVOPageInfo.getList();
@@ -712,7 +713,12 @@ public class OrgAppMarketServiceImpl implements OrgAppMarketService {
                 AppServiceVersionDTO appServiceVersionDTO = appServiceVersionService.baseQuery(t.getId());
                 ConfigVO configVO;
                 if (appServiceVersionDTO.getHarborConfigId() != null) {
-                    configVO = gson.fromJson(devopsConfigService.baseQuery(appServiceVersionDTO.getHarborConfigId()).getConfig(), ConfigVO.class);
+                    DevopsConfigDTO devopsConfigDTO=devopsConfigService.baseQuery(appServiceVersionDTO.getHarborConfigId());
+                    configVO = gson.fromJson(devopsConfigDTO.getConfig(), ConfigVO.class);
+                    AppServiceDTO appServiceDTO = appServiceMapper.selectByPrimaryKey(appServiceVersionDTO.getAppServiceId());
+                    if (devopsConfigDTO.getName().equals(HARBOR_NAME) && appServiceDTO.getProjectId() != null) {
+                        configVO = appServiceInstanceService.queryDefaultConfig(appServiceDTO.getProjectId(), configVO);
+                    }
                 } else {
                     configVO = devopsConfigService.queryRealConfigVO(appServiceMarketVO.getAppServiceId(), APP_SERVICE, "harbor").getConfig();
                 }
@@ -776,8 +782,8 @@ public class OrgAppMarketServiceImpl implements OrgAppMarketService {
             result = marketServiceClientOperator.uploadFile(appMarketUploadVO.getAppVersion(), files, mapJson);
         } else {
             List<MultipartBody.Part> files = createMultipartBody(zipFileList);
-            String getawayUrl = appMarketUploadVO.getSaasGetawayUrl().endsWith("/") ? appMarketUploadVO.getSaasGetawayUrl() : appMarketUploadVO.getSaasGetawayUrl() + "/";
-            MarketServicePublicClient marketServiceClient = RetrofitHandler.getMarketServiceClient(getawayUrl, MARKET);
+            String gatewayUrl = appMarketUploadVO.getSaasGetawayUrl().endsWith("/") ? appMarketUploadVO.getSaasGetawayUrl() : appMarketUploadVO.getSaasGetawayUrl() + "/";
+            MarketServicePublicClient marketServiceClient = RetrofitHandler.getMarketServiceClient(gatewayUrl, MARKET);
 
             String remoteToken = baseServiceClientOperator.checkLatestToken();
             Call<ResponseBody> responseCall = marketServiceClient.uploadFile(remoteToken, appMarketUploadVO.getAppVersion(), files, mapJson);
@@ -804,8 +810,8 @@ public class OrgAppMarketServiceImpl implements OrgAppMarketService {
             String imageJson = marketImageUrlVO != null ? gson.toJson(marketImageUrlVO) : null;
             List<MultipartBody.Part> files = createMultipartBody(zipFileList);
 
-            String getawayUrl = appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl().endsWith("/") ? appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl() : appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl() + "/";
-            MarketServicePublicClient marketServiceClient = RetrofitHandler.getMarketServiceClient(getawayUrl, MARKET);
+            String gatewayUrl = appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl().endsWith("/") ? appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl() : appMarketFixVersionPayload.getFixVersionUploadPayload().getSaasGetawayUrl() + "/";
+            MarketServicePublicClient marketServiceClient = RetrofitHandler.getMarketServiceClient(gatewayUrl, MARKET);
             String remoteToken = baseServiceClientOperator.checkLatestToken();
             Call<ResponseBody> responseCall = marketServiceClient.updateAppPublishInfoFix(
                     remoteToken,

@@ -3,8 +3,9 @@ package io.choerodon.devops.api.controller.v1
 import io.choerodon.core.domain.Page
 import io.choerodon.devops.DependencyInjectUtil
 import io.choerodon.devops.IntegrationTestConfiguration
+import io.choerodon.devops.api.vo.FileCreationVO
 import io.choerodon.devops.app.service.GitlabGroupMemberService
-import io.choerodon.devops.app.service.IamService
+
 import io.choerodon.devops.app.service.impl.CertificationServiceImpl
 import io.choerodon.devops.infra.dto.CertificationDTO
 import io.choerodon.devops.infra.dto.DevopsEnvCommandDTO
@@ -54,8 +55,6 @@ class CertificationControllerSpec extends Specification {
     private DevopsEnvironmentMapper devopsEnvironmentMapper
     @Autowired
     private DevopsEnvCommandMapper devopsEnvCommandMapper
-    @Autowired
-    private IamService iamRepository
     @Autowired
     private GitlabServiceClientOperator gitlabRepository
     @Autowired
@@ -124,7 +123,16 @@ class CertificationControllerSpec extends Specification {
             RepositoryFileDTO repositoryFile = new RepositoryFileDTO()
             repositoryFile.setFilePath("test")
             ResponseEntity<RepositoryFileDTO> repositoryFileEntity = new ResponseEntity<>(repositoryFile, HttpStatus.OK)
-            Mockito.when(gitlabServiceClient.createFile(Mockito.anyInt(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyInt())).thenReturn(repositoryFileEntity)
+
+            FileCreationVO fileCreationVO = new FileCreationVO()
+            fileCreationVO.setBranchName(Mockito.anyString())
+            fileCreationVO.setCommitMessage(Mockito.anyString())
+            fileCreationVO.setContent(Mockito.anyString())
+            fileCreationVO.setUserId(Mockito.anyInt())
+            fileCreationVO.setProjectId(Mockito.anyInt())
+            fileCreationVO.setPath(Mockito.anyString())
+
+            Mockito.when(gitlabServiceClient.createFile(Mockito.anyInt(), fileCreationVO)).thenReturn(repositoryFileEntity)
 //            Mockito.doReturn(repositoryFileEntity).when(gitlabServiceClient).createFile( null, anyString(), anyString(), anyString(), anyInt())
 
         }

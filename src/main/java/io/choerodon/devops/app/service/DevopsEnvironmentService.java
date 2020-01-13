@@ -3,8 +3,9 @@ package io.choerodon.devops.app.service;
 import java.util.List;
 
 import com.github.pagehelper.PageInfo;
+import org.apache.ibatis.annotations.Param;
+import org.springframework.data.domain.Pageable;
 
-import io.choerodon.base.domain.PageRequest;
 import io.choerodon.devops.api.vo.*;
 import io.choerodon.devops.app.eventhandler.payload.EnvGitlabProjectPayload;
 import io.choerodon.devops.app.eventhandler.payload.GitlabProjectPayload;
@@ -147,12 +148,12 @@ public interface DevopsEnvironmentService {
     /**
      * 分页查询环境下用户权限
      *
-     * @param projectId   项目id
-     * @param pageRequest 分页参数
-     * @param envId       环境id
+     * @param projectId 项目id
+     * @param pageable  分页参数
+     * @param envId     环境id
      * @return page
      */
-    PageInfo<DevopsUserPermissionVO> pageUserPermissionByEnvId(Long projectId, PageRequest pageRequest,
+    PageInfo<DevopsUserPermissionVO> pageUserPermissionByEnvId(Long projectId, Pageable pageable,
                                                                String params, Long envId);
 
     /**
@@ -163,7 +164,7 @@ public interface DevopsEnvironmentService {
      * @param params    搜索参数
      * @return 所有项目成员
      */
-    List<DevopsEnvUserVO> listNonRelatedMembers(Long projectId, Long envId, String params);
+    PageInfo<DevopsEnvUserVO> listNonRelatedMembers(Long projectId, Long envId, Long selectedIamUserId, Pageable pageable, String params);
 
     /**
      * 删除环境下该用户的权限
@@ -193,10 +194,10 @@ public interface DevopsEnvironmentService {
     /**
      * 删除已停用或失败的环境
      *
-     * @param envId 环境id
+     * @param envId     环境id
      * @param projectId 项目id
      */
-    void deleteDeactivatedOrFailedEnvironment(Long projectId,Long envId);
+    void deleteDeactivatedOrFailedEnvironment(Long projectId, Long envId);
 
     /**
      * 项目下查询集群信息
@@ -232,20 +233,36 @@ public interface DevopsEnvironmentService {
     void retryGitOps(Long envId);
 
     /**
+     * 重试系统环境的GitOps解析
+     *
+     * @param envId 环境id
+     * @return 重试GitOps解析是否重试
+     */
+    boolean retrySystemEnvGitOps(Long envId);
+
+    /**
      * @param devopsEnvironmentDTO
      * @param userAttrDTO
      */
     void checkEnv(DevopsEnvironmentDTO devopsEnvironmentDTO, UserAttrDTO userAttrDTO);
 
     /**
+     * 检查环境是否可以停用
+     *
+     * @param projectId 项目id
+     * @param envId     环境id
+     * @return true表示可以
+     */
+    Boolean disableCheck(Long projectId, Long envId);
+
+    /**
      * 检查环境是否可以删除
      *
      * @param projectId 项目id
      * @param envId     环境id
-     * @return
+     * @return true表示可以
      */
     Boolean deleteCheck(Long projectId, Long envId);
-
 
     /**
      * 检查资源是否存在
@@ -256,7 +273,7 @@ public interface DevopsEnvironmentService {
      * @param type      其他对象类型
      * @return boolean
      */
-    Boolean checkExist(Long projectId, Long envId, Long objectId, String type);
+    EnvironmentMsgVO checkExist(Long projectId, Long envId, Long objectId, String type);
 
     DevopsEnvironmentDTO baseCreate(DevopsEnvironmentDTO devopsEnvironmentDTO);
 
@@ -284,9 +301,54 @@ public interface DevopsEnvironmentService {
 
     void baseDeleteById(Long id);
 
-    List<DevopsEnvironmentDTO> baseListByClusterId(Long clusterId);
+    List<DevopsEnvironmentDTO> baseListUserEnvByClusterId(Long clusterId);
 
     List<DevopsEnvironmentDTO> baseListByIds(List<Long> envIds);
 
     void deleteEnvSaga(Long envId);
+
+    /**
+     * 创建集群的配置库
+     *
+     * @param clusterId 集群id
+     * @return 集群对应的环境id
+     */
+    DevopsEnvironmentDTO createSystemEnv(Long clusterId);
+
+    /**
+     * 删除集群的配置库
+     *
+     * @param projectId   项目id
+     * @param clusterId   集群id
+     * @param clusterCode 集群code
+     * @param envId       集群的配置库id
+     */
+    void deleteSystemEnv(Long projectId, Long clusterId, String clusterCode, Long envId);
+
+    /**
+     * 查出指定集群的所有环境
+     *
+     * @param clusterId
+     * @return
+     */
+    List<DevopsEnvironmentDTO> listAllEnvByClusterId(Long clusterId);
+
+    DevopsEnvironmentDTO queryByTokenWithClusterCode(@Param("token") String token);
+
+    /**
+     * 查询项目下的环境
+     *
+     * @param projectId
+     * @param envName   环境名
+     * @return
+     */
+    List<DevopsEnvironmentDTO> listByProjectIdAndName(Long projectId, String envName);
+
+    /**
+     * 更新符合project_id和devops_env_group_id的环境的devops_env_group_id为null
+     *
+     * @param projectId  项目id
+     * @param envGroupId 组id
+     */
+    void updateDevopsEnvGroupIdNullByProjectIdAndGroupId(Long projectId, Long envGroupId);
 }

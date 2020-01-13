@@ -38,4 +38,8 @@ public interface DevopsClusterMapper extends Mapper<DevopsClusterDTO> {
 
 
     List<DevopsClusterDTO> listAllClustersToMigrate();
+
+    DevopsClusterDTO queryClusterForUpdate(@Param("clusterId") Long clusterId);
+
+    Long queryClusterIdBySystemEnvId(@Param("systemEnvId") Long systemEnvId);
 }

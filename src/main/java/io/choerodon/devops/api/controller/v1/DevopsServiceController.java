@@ -5,24 +5,24 @@ import java.util.Optional;
 import javax.validation.Valid;
 
 import com.github.pagehelper.PageInfo;
+import io.swagger.annotations.ApiOperation;
+import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import springfox.documentation.annotations.ApiIgnore;
 
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.domain.Sort;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.DevopsServiceReqVO;
 import io.choerodon.devops.api.vo.DevopsServiceVO;
 import io.choerodon.devops.app.service.DevopsServiceService;
-import io.choerodon.mybatis.annotation.SortDefault;
 import io.choerodon.swagger.annotation.CustomPageRequest;
 
 /**
@@ -32,7 +32,7 @@ import io.choerodon.swagger.annotation.CustomPageRequest;
 @RequestMapping(value = "/v1/projects/{project_id}/service")
 public class DevopsServiceController {
 
-    public static final String ERROR_APP_K8S_SERVICE_QUERY = "error.app.k8s.service.query";
+    private static final String ERROR_APP_K8S_SERVICE_QUERY = "error.app.k8s.service.query";
 
     @Autowired
     private DevopsServiceService devopsServiceService;
@@ -47,7 +47,7 @@ public class DevopsServiceController {
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER,
             InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "检查网络唯一性")
+    @ApiOperation(value = "检查网络名称唯一性")
     @GetMapping(value = "/check_name")
     public ResponseEntity<Boolean> checkName(
             @ApiParam(value = "项目ID", required = true)
@@ -143,8 +143,8 @@ public class DevopsServiceController {
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "环境ID", required = true)
             @RequestParam(value = "env_id") Long envId,
-            @ApiParam(value = "服务id",required = false)
-            @RequestParam(value = "app_service_id" ,required = false) Long appServiceId) {
+            @ApiParam(value = "服务id", required = false)
+            @RequestParam(value = "app_service_id", required = false) Long appServiceId) {
         return Optional.ofNullable(devopsServiceService.listByEnvIdAndAppServiceId(envId, appServiceId))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.app.k8s.service.env.query"));
@@ -201,7 +201,7 @@ public class DevopsServiceController {
      *
      * @param projectId   项目id
      * @param envId       环境id
-     * @param pageRequest 分页参数
+     * @param pageable    分页参数
      * @param searchParam 查询参数
      * @return Page of DevopsServiceVO
      */
@@ -220,10 +220,10 @@ public class DevopsServiceController {
             @RequestParam(value = "app_service_id", required = false) Long appServiceId,
             @ApiParam(value = "分页参数")
             @SortDefault(value = "id", direction = Sort.Direction.DESC)
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String searchParam) {
-        return Optional.ofNullable(devopsServiceService.pageByEnv(projectId, envId, pageRequest, searchParam, appServiceId))
+        return Optional.ofNullable(devopsServiceService.pageByEnv(projectId, envId, pageable, searchParam, appServiceId))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException(ERROR_APP_K8S_SERVICE_QUERY));
     }
@@ -232,9 +232,9 @@ public class DevopsServiceController {
     /**
      * 查询实例下关联的网络域名（不包含chart）
      *
-     * @param projectId   项目id
-     * @param instanceId  实例Id
-     * @param pageRequest 分页参数
+     * @param projectId  项目id
+     * @param instanceId 实例Id
+     * @param pageable   分页参数
      * @return Page of DevopsServiceVO
      */
     @Permission(type = ResourceType.PROJECT,
@@ -254,10 +254,10 @@ public class DevopsServiceController {
             @RequestParam(value = "app_service_id", required = false) Long appServiceId,
             @ApiParam(value = "分页参数")
             @SortDefault(value = "id", direction = Sort.Direction.DESC)
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String searchParam) {
-        return Optional.ofNullable(devopsServiceService.pageByInstance(projectId, envId, instanceId, pageRequest, appServiceId, searchParam))
+        return Optional.ofNullable(devopsServiceService.pageByInstance(projectId, envId, instanceId, pageable, appServiceId, searchParam))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException(ERROR_APP_K8S_SERVICE_QUERY));
     }

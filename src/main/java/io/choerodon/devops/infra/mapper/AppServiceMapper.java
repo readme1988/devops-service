@@ -86,22 +86,12 @@ public interface AppServiceMapper extends Mapper<AppServiceDTO> {
 
     List<AppServiceDTO> queryOrganizationShareApps(@Param("projectIds") List<Long> projectIds,
                                                    @Param("param") String param,
-                                                   @Param("searchProjectId") Long searchProjectId);
+                                                   @Param("projectId") Long projectId);
 
     List<AppServiceDTO> queryMarketDownloadApps(@Param("type") String type,
                                                 @Param("param") String param,
                                                 @Param("appServiceIds") List<Long> appServiceIds,
                                                 @Param("searchProjectId") Long searchProjectId);
-
-    /**
-     * 根据ProjectID 查询可用的项目共享Apps
-     *
-     * @param projectId
-     * @return
-     */
-    List<AppServiceDTO> listShareProjectApps(@Param("projectId") Long projectId,
-                                             @Param("param") String param,
-                                             @Param("searchProjectId") Long searchProjectId);
 
     List<AppServiceDTO> listProjectMembersAppService(@Param("projectId") Long projectId,
                                                      @Param("isActive") Boolean isActive,
@@ -121,7 +111,7 @@ public interface AppServiceMapper extends Mapper<AppServiceDTO> {
                                                              @Param("userId") Long userId);
 
     Integer countProjectMembersAppServiceByActive(@Param("projectId") Long projectId,
-                                                             @Param("userId") Long userId);
+                                                  @Param("userId") Long userId);
 
     List<AppServiceDTO> pageServiceByProjectId(@Param("projectId") Long projectId,
                                                @Param("searchParam") Map<String, Object> searchParam,
@@ -134,6 +124,8 @@ public interface AppServiceMapper extends Mapper<AppServiceDTO> {
     int updateIsSynchroToTrueWhenFailed();
 
     int updateIsActiveNullToTrue();
+
+    List<AppServiceDTO> listAll(@Param("projectId") Long projectId);
 
     /**
      * 根据gitlabGroupId和iamUserId获取

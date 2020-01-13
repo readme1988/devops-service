@@ -63,6 +63,19 @@ export default ((intlPrefix, formatMessage, projectId) => {
     }
   }
 
+  function versionDynamicProps({ record }) {
+    return {
+      lookupAxiosConfig: getLookUpConfig,
+    };
+  }
+
+  function getLookUpConfig({ record }) {
+    return {
+      url: `/devops/v1/projects/${projectId}/app_service_versions/page_by_options?app_service_id=${record.get('id')}&deploy_only=false&do_page=true&page=1&size=40`,
+      method: 'post',
+    };
+  }
+
   return ({
     autoQuery: false,
     selection: false,
@@ -70,13 +83,12 @@ export default ((intlPrefix, formatMessage, projectId) => {
     transport: {},
     fields: [
       { name: 'id', type: 'number' },
-      { name: 'name', type: 'string', label: formatMessage({ id: `${intlPrefix}.name` }), validator: checkName, maxLength: 20 },
+      { name: 'name', type: 'string', label: formatMessage({ id: `${intlPrefix}.name` }), validator: checkName, maxLength: 40 },
       { name: 'code', type: 'string', label: formatMessage({ id: `${intlPrefix}.code` }), validator: checkCode, maxLength: 30 },
       { name: 'type', type: 'string', label: formatMessage({ id: `${intlPrefix}.type` }) },
       { name: 'projectName', type: 'string', label: formatMessage({ id: `${intlPrefix}.project` }) },
       { name: 'share', type: 'boolean', label: formatMessage({ id: `${intlPrefix}.source` }) },
-      { name: 'versionId', type: 'number' },
-      { name: 'versions', type: 'object', label: formatMessage({ id: `${intlPrefix}.version` }) },
+      { name: 'versionId', type: 'number', textField: 'version', valueField: 'id', dynamicProps: versionDynamicProps, label: formatMessage({ id: `${intlPrefix}.version` }), required: true },
       { name: 'nameFailed', type: 'boolean', defaultValue: false },
       { name: 'codeFailed', type: 'boolean', defaultValue: false },
     ],

@@ -8,14 +8,14 @@ import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.*;
@@ -168,9 +168,7 @@ public class DevopsEnvironmentController {
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "环境id", required = true)
             @PathVariable(value = "environment_id") Long environmentId) {
-        return Optional.ofNullable(devopsEnvironmentService.query(environmentId))
-                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException(ERROR_ENVIRONMENT_QUERY));
+        return new ResponseEntity<>(devopsEnvironmentService.query(environmentId), HttpStatus.OK);
     }
 
 
@@ -190,9 +188,7 @@ public class DevopsEnvironmentController {
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "环境id", required = true)
             @PathVariable(value = "environment_id") Long environmentId) {
-        return Optional.ofNullable(devopsEnvironmentService.queryInfoById(projectId, environmentId))
-                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException(ERROR_ENVIRONMENT_QUERY));
+        return new ResponseEntity<>(devopsEnvironmentService.queryInfoById(projectId, environmentId), HttpStatus.OK);
     }
 
 
@@ -297,17 +293,17 @@ public class DevopsEnvironmentController {
             @PathVariable(value = "env_id") Long envId) {
         return Optional.ofNullable(devopsEnvironmentService.queryEnvSyncStatus(projectId, envId))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException("error.env.sync.get"));
+                .orElse(new ResponseEntity<>(new EnvSyncStatusVO(), HttpStatus.OK));
     }
 
 
     /**
      * 分页查询环境下用户权限
      *
-     * @param projectId   项目id
-     * @param pageRequest 分页参数
-     * @param envId       环境id
-     * @param params      搜索参数
+     * @param projectId 项目id
+     * @param pageable  分页参数
+     * @param envId     环境id
+     * @param params    搜索参数
      * @return page
      */
     @Permission(type = ResourceType.PROJECT,
@@ -321,11 +317,11 @@ public class DevopsEnvironmentController {
             @ApiParam(value = "环境id", required = true)
             @PathVariable(value = "env_id") Long envId,
             @ApiParam(value = "分页参数", required = true)
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
         return Optional.ofNullable(devopsEnvironmentService
-                .pageUserPermissionByEnvId(projectId, pageRequest, params, envId))
+                .pageUserPermissionByEnvId(projectId, pageable, params, envId))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.env.user.permission.get"));
     }
@@ -342,14 +338,18 @@ public class DevopsEnvironmentController {
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER})
     @ApiOperation(value = "列出项目下所有与该环境未分配权限的项目成员")
     @PostMapping(value = "/{env_id}/permission/list_non_related")
-    public ResponseEntity<List<DevopsEnvUserVO>> listAllNonRelatedMembers(
+    public ResponseEntity<PageInfo<DevopsEnvUserVO>> listAllNonRelatedMembers(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "环境id", required = true)
             @PathVariable(value = "env_id") Long envId,
+            @ApiParam(value = "分页参数", required = true)
+            @ApiIgnore Pageable pageable,
+            @ApiParam(value = "指定用户id")
+            @RequestParam(value = "iamUserId", required = false) Long selectedIamUserId,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params) {
-        return Optional.ofNullable(devopsEnvironmentService.listNonRelatedMembers(projectId, envId, params))
+        return Optional.ofNullable(devopsEnvironmentService.listNonRelatedMembers(projectId, envId, selectedIamUserId, pageable, params))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.get.env.non.related.users"));
     }
@@ -427,14 +427,14 @@ public class DevopsEnvironmentController {
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "删除已停用/失败的环境")
+    @ApiOperation(value = "删除未连接/已停用/失败的环境")
     @DeleteMapping(value = "/{env_id}")
     public ResponseEntity deleteDeactivatedEnvironment(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "环境id", required = true)
             @PathVariable(value = "env_id") Long envId) {
-        devopsEnvironmentService.deleteDeactivatedOrFailedEnvironment(projectId,envId);
+        devopsEnvironmentService.deleteDeactivatedOrFailedEnvironment(projectId, envId);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
 
@@ -485,7 +485,7 @@ public class DevopsEnvironmentController {
      * @param envId     环境Id
      */
     @Permission(type = ResourceType.PROJECT, roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "重试gitOps")
+    @ApiOperation(value = "重试gitOps解析流程")
     @GetMapping(value = "/{env_id}/retry")
     public void retryByGitOps(
             @ApiParam(value = "项目ID", required = true)
@@ -503,7 +503,7 @@ public class DevopsEnvironmentController {
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER})
-    @ApiOperation(value = "项目下查询环境")
+    @ApiOperation(value = "环境树形目录")
     @GetMapping(value = "/env_tree_menu")
     public ResponseEntity<List<DevopsEnvGroupEnvsVO>> listEnvTreeMenu(
             @ApiParam(value = "项目id", required = true)
@@ -539,7 +539,7 @@ public class DevopsEnvironmentController {
      *
      * @param projectId 项目id
      * @param envId     环境id
-     * @return boolean
+     * @return true表示可以删除
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER})
@@ -556,6 +556,27 @@ public class DevopsEnvironmentController {
     }
 
     /**
+     * 查询指定环境是否可停用
+     *
+     * @param projectId 项目id
+     * @param envId     环境id
+     * @return true表示可以停用
+     */
+    @Permission(type = ResourceType.PROJECT,
+            roles = {InitRoleCode.PROJECT_OWNER})
+    @ApiOperation(value = "查询指定环境是否可停用")
+    @GetMapping(value = "/{env_id}/disable_check")
+    public ResponseEntity<Boolean> disableCheck(
+            @ApiParam(value = "项目id", required = true)
+            @PathVariable(value = "project_id") Long projectId,
+            @ApiParam(value = "环境id")
+            @PathVariable(value = "env_id") Long envId) {
+        return Optional.ofNullable(devopsEnvironmentService.disableCheck(projectId, envId))
+                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+                .orElseThrow(() -> new CommonException(ERROR_ENVIRONMENT_GET));
+    }
+
+    /**
      * 检查资源是否存在
      *
      * @param projectId 项目id
@@ -565,10 +586,10 @@ public class DevopsEnvironmentController {
      * @return boolean
      */
     @Permission(type = ResourceType.PROJECT,
-            roles = {InitRoleCode.PROJECT_OWNER,InitRoleCode.PROJECT_MEMBER})
+            roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
     @ApiOperation(value = "检查资源是否存在")
     @GetMapping(value = "/{env_id}/check")
-    public ResponseEntity<Boolean> checkExist(
+    public ResponseEntity<EnvironmentMsgVO> checkExist(
             @ApiParam(value = "项目id", required = true)
             @PathVariable(value = "project_id") Long projectId,
             @ApiParam(value = "对象类型,对象类型为空时，表示查询环境是否存在")

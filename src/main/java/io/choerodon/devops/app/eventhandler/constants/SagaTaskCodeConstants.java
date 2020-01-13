@@ -83,6 +83,16 @@ public class SagaTaskCodeConstants {
     public static final String DEVOPS_CREATE_INGRESS = "devopsCreateIngress";
 
     /**
+     * devops创建PVC
+     */
+    public static final String DEVOPS_CREATE_PERSISTENTVOLUMECLAIM = "devopsCreatePersistentVolumeClaim";
+
+    /**
+     * devops创建PV
+     */
+    public static final String DEVOPS_CREATE_PERSISTENTVOLUME = "devopsCreatePersistentVolume";
+
+    /**
      * 初始化Demo环境的项目相关数据
      */
     public static final String REGISTER_DEVOPS_INIT_DEMO_DATA = "register-devops-init-demo-data";
@@ -208,6 +218,15 @@ public class SagaTaskCodeConstants {
      */
     public static final String DEVOPS_MARKET_DELETE_GITLAB_PRO = "devops-market-failed-delete-gitlab-pro";
 
+    /**
+     * DevOps消费添加admin用户事件
+     */
+    public static final String DEVOPS_ADD_ADMIN = "devops-add-admin";
+
+    /**
+     * DevOps消费删除admin用户U事件
+     */
+    public static final String DEVOPS_DELETE_ADMIN = "devops-delete-admin";
 
 
     private SagaTaskCodeConstants() {

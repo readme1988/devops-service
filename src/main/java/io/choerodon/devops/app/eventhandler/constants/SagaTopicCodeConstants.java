@@ -31,6 +31,16 @@ public class SagaTopicCodeConstants {
     public static final String DEVOPS_CREATE_INGRESS = "devops-create-ingress";
 
     /**
+     * Devops创建PVC
+     */
+    public static final String DEVOPS_CREATE_PERSISTENTVOLUMECLAIM = "devops-create-persistentvolumeclaim";
+
+    /**
+     * Devops创建PV
+     */
+    public static final String DEVOPS_CREATE_PERSISTENTVOLUME = "devops-create-persistentvolume";
+
+    /**
      * Devops创建应用服务
      */
     public static final String DEVOPS_CREATE_APPLICATION_SERVICE = "devops-create-application-service";
@@ -215,6 +225,17 @@ public class SagaTopicCodeConstants {
      * 应用市场删除gitlab中的项目
      */
     public static final String DEVOPS_MARKET_DELETE_GITLAB_PRO = "devops-market-failed-delete-gitlab-pro";
+
+
+    /**
+     * 批量为用户分配Root权限
+     */
+    public static final String ASSIGN_ADMIN = "base-assign-admin";
+
+    /**
+     * 删除单个用户Root权限
+     */
+    public static final String DELETE_ADMIN = "base-delete-admin";
 
 
     private SagaTopicCodeConstants() {

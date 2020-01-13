@@ -113,8 +113,8 @@ export default class TaskCreate extends Component {
       intl: { formatMessage },
       form: { setFields },
     } = this.props;
-    const { getTaskList, getStageList } = PipelineCreateStore;
-    const { pipelineAppServiceDeployVO, type } = _.find(getTaskList[stageId], ['index', taskId]) || {};
+    const { getTaskList, getStageList, getUser } = PipelineCreateStore;
+    const { pipelineAppServiceDeployVO, type, taskUserRels } = _.find(getTaskList[stageId], ['index', taskId]) || {};
     const { appServiceId, envId, instanceId, valueId, instanceName } = pipelineAppServiceDeployVO || {};
     this.setState({
       initIstName: instanceName,
@@ -485,6 +485,40 @@ export default class TaskCreate extends Component {
     PipelineCreateStore.loadConfig(id, envId, appId);
   }
 
+
+  loadMoreWrap = (e) => {
+    e.stopPropagation();
+    const {
+      AppState: {
+        currentMenuType: { id: projectId },
+      },
+    } = this.props;
+    const {
+      getPageInfo,
+    } = PipelineCreateStore;
+    const { pageNum } = getPageInfo || {};
+    PipelineCreateStore.loadUser(projectId, pageNum + 1);
+  };
+
+  handleSearch = _.debounce((value) => {
+    const { 
+      AppState: {
+        currentMenuType: { id: projectId },
+      },
+    } = this.props;
+    PipelineCreateStore.loadUser(projectId, 1, value);
+  }, 700);
+
+  handleUserChange = (value) => {
+    const {
+      form: { setFieldsValue },
+    } = this.props;
+    if (_.includes(value, 'pipeline-create-user-select-more-key')) {
+      const realValue = _.remove(value, (item) => item === 'pipeline-create-user-select-more-key');
+      setFieldsValue({ users: realValue });
+    }
+  };
+
   render() {
     const {
       visible,
@@ -513,6 +547,7 @@ export default class TaskCreate extends Component {
       getUser,
       getTaskSettings,
       getTrigger,
+      getPageInfo,
     } = PipelineCreateStore;
     const {
       submitting,
@@ -560,6 +595,17 @@ export default class TaskCreate extends Component {
         <Tooltip title={loginName}>{realName || loginName}</Tooltip>
       </Option>
     ));
+
+    if (getPageInfo && getPageInfo.hasNextPage) {
+      userOptions.push(<Option key="pipeline-create-user-select-more-key" className="c7n-load-more-wrap">
+        <div
+          className="c7n-option-popover"
+          onClick={this.loadMoreWrap}
+        >
+          <span className="c7n-option-span">{formatMessage({ id: 'loadMore' })}</span>
+        </div>
+      </Option>);
+    }
 
     const configOptions = _.map(getConfigList, ({ id, name }) => (<Option key={id} value={id}>
       {name}
@@ -791,14 +837,15 @@ export default class TaskCreate extends Component {
           })(
             <Select
               filter
+              filterOption={false}
+              loading={getLoading.user}
               allowClear
               mode="multiple"
               optionFilterProp="children"
               className="c7n-select_512"
               label={<FormattedMessage id="pipeline.task.auditor" />}
-              filterOption={(input, option) => option.props.children.props.children
-                .toLowerCase()
-                .indexOf(input.toLowerCase()) >= 0}
+              onSearch={this.handleSearch}
+              onChange={this.handleUserChange}
             >
               {userOptions}
             </Select>,

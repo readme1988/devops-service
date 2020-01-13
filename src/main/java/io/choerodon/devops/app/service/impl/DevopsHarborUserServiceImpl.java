@@ -1,13 +1,11 @@
 package io.choerodon.devops.app.service.impl;
 
-import java.util.List;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import io.choerodon.core.exception.CommonException;
 import io.choerodon.devops.app.service.DevopsHarborUserService;
 import io.choerodon.devops.infra.dto.HarborUserDTO;
-import io.choerodon.devops.infra.dto.harbor.User;
 import io.choerodon.devops.infra.mapper.HarborUserMapper;
 
 /**
@@ -21,13 +19,37 @@ public class DevopsHarborUserServiceImpl implements DevopsHarborUserService {
     private HarborUserMapper harborUserMapper;
 
     @Override
-    public long create(HarborUserDTO harborUser) {
-        return harborUserMapper.insertSelective(harborUser);
+    public void baseCreateOrUpdate(HarborUserDTO harborUser) {
+        HarborUserDTO oldHarborUserDTO = harborUserMapper.selectOne(harborUser);
+        if (oldHarborUserDTO == null) {
+            if (harborUserMapper.insertSelective(harborUser) != 1) {
+                throw new CommonException("error.insert.harbor.user");
+            }
+        } else {
+            harborUser.setId(oldHarborUserDTO.getId());
+            harborUser.setObjectVersionNumber(oldHarborUserDTO.getObjectVersionNumber());
+            if (harborUserMapper.updateByPrimaryKeySelective(harborUser) != 1) {
+                throw new CommonException("error.update.harbor.user");
+            }
+        }
     }
 
+    @Override
+    public void baseCreate(HarborUserDTO harborUser) {
+        if (harborUserMapper.insertSelective(harborUser) != 1) {
+            throw new CommonException("error.insert.harbor.user");
+        }
+    }
 
     @Override
     public HarborUserDTO queryHarborUserById(Long id) {
         return harborUserMapper.selectByPrimaryKey(id);
+    }
+
+    @Override
+    public void baseDelete(Long harborUserId) {
+        if (harborUserMapper.deleteByPrimaryKey(harborUserId) != 1) {
+            throw new CommonException("erroe.delete.harbor.user");
+        }
     }
 }

@@ -1,9 +1,10 @@
 package io.choerodon.devops.infra.dto;
 
+import io.choerodon.mybatis.entity.BaseDTO;
+import io.swagger.annotations.ApiModelProperty;
+
 import javax.persistence.Id;
 import javax.persistence.Table;
-
-import io.choerodon.mybatis.entity.BaseDTO;
 
 /**
  * Created by younger on 2018/3/29.
@@ -14,12 +15,17 @@ public class DevopsProjectDTO extends BaseDTO {
     private Long iamProjectId;
     private Long devopsAppGroupId;
     private Long devopsEnvGroupId;
+
+    @ApiModelProperty("集群对应的环境所属的GitLab组ID")
+    private Long devopsClusterEnvGroupId;
+
     private Boolean harborProjectIsPrivate;
     private String harborProjectUserName;
     private String harborProjectUserPassword;
     private String harborProjectUserEmail;
     private Long harborUserId;
     private Long harborPullUserId;
+
     public DevopsProjectDTO() {
     }
 
@@ -97,5 +103,29 @@ public class DevopsProjectDTO extends BaseDTO {
 
     public void setHarborUserId(Long harborUserId) {
         this.harborUserId = harborUserId;
+    }
+
+    public Long getDevopsClusterEnvGroupId() {
+        return devopsClusterEnvGroupId;
+    }
+
+    public void setDevopsClusterEnvGroupId(Long devopsClusterEnvGroupId) {
+        this.devopsClusterEnvGroupId = devopsClusterEnvGroupId;
+    }
+
+    @Override
+    public String toString() {
+        return "DevopsProjectDTO{" +
+                "iamProjectId=" + iamProjectId +
+                ", devopsAppGroupId=" + devopsAppGroupId +
+                ", devopsEnvGroupId=" + devopsEnvGroupId +
+                ", devopsClusterEnvGroupId=" + devopsClusterEnvGroupId +
+                ", harborProjectIsPrivate=" + harborProjectIsPrivate +
+                ", harborProjectUserName='" + harborProjectUserName + '\'' +
+                ", harborProjectUserPassword='" + harborProjectUserPassword + '\'' +
+                ", harborProjectUserEmail='" + harborProjectUserEmail + '\'' +
+                ", harborUserId=" + harborUserId +
+                ", harborPullUserId=" + harborPullUserId +
+                '}';
     }
 }

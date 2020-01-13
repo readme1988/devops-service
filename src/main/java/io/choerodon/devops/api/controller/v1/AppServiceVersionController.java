@@ -9,15 +9,16 @@ import com.github.pagehelper.PageInfo;
 import io.swagger.annotations.ApiOperation;
 import io.swagger.annotations.ApiParam;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.web.SortDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import springfox.documentation.annotations.ApiIgnore;
 
-import io.choerodon.base.annotation.Permission;
-import io.choerodon.base.domain.PageRequest;
-import io.choerodon.base.domain.Sort;
-import io.choerodon.base.enums.ResourceType;
+import io.choerodon.core.annotation.Permission;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import io.choerodon.core.enums.ResourceType;
 import io.choerodon.core.exception.CommonException;
 import io.choerodon.core.iam.InitRoleCode;
 import io.choerodon.devops.api.vo.AppServiceVersionAndCommitVO;
@@ -25,7 +26,7 @@ import io.choerodon.devops.api.vo.AppServiceVersionRespVO;
 import io.choerodon.devops.api.vo.AppServiceVersionVO;
 import io.choerodon.devops.api.vo.DeployVersionVO;
 import io.choerodon.devops.app.service.AppServiceVersionService;
-import io.choerodon.mybatis.annotation.SortDefault;
+
 import io.choerodon.swagger.annotation.CustomPageRequest;
 
 /**
@@ -41,13 +42,6 @@ public class AppServiceVersionController {
     private AppServiceVersionService appServiceVersionService;
 
 
-    /**
-     * @param projectId
-     * @param appServiceId
-     * @param deployOnly
-     * @param pageRequest
-     * @return
-     */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER,
                     InitRoleCode.PROJECT_MEMBER})
@@ -66,13 +60,13 @@ public class AppServiceVersionController {
             @ApiParam(value = "是否分页")
             @RequestParam(value = "do_page", required = false) Boolean doPage,
             @ApiParam(value = "分页参数")
-            @ApiIgnore PageRequest pageRequest,
+            @ApiIgnore Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestBody(required = false) String params,
             @ApiParam(value = "指定版本")
             @RequestParam(required = false) String version) {
         return Optional.ofNullable(appServiceVersionService.pageByOptions(
-                projectId, appServiceId, appServiceVersionId, deployOnly, doPage, params, pageRequest, version))
+                projectId, appServiceId, appServiceVersionId, deployOnly, doPage, params, pageable, version))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException(VERSION_QUERY_ERROR));
     }
@@ -111,7 +105,7 @@ public class AppServiceVersionController {
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER,
                     InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "查询部署在某个环境服务的服务版本")
+    @ApiOperation(value = "查询部署在某个环境的应用服务的版本")
     @GetMapping("/app/{app_service_id}/env/{envId}/query")
     public ResponseEntity<List<AppServiceVersionRespVO>> queryByappServiceIdAndEnvId(
             @ApiParam(value = "项目ID", required = true)
@@ -147,27 +141,27 @@ public class AppServiceVersionController {
                 .orElseThrow(() -> new CommonException(VERSION_QUERY_ERROR));
     }
 
-    /**
-     * 项目下查询服务最新的版本和各环境下部署的版本
-     *
-     * @param projectId    项目ID
-     * @param appServiceId 服务ID
-     * @return DeployVersionVO
-     */
-    @Permission(type = ResourceType.PROJECT,
-            roles = {InitRoleCode.PROJECT_OWNER,
-                    InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "项目下查询服务最新的版本和各环境下部署的版本")
-    @GetMapping(value = "/app_service/{app_service_id}/deployVersions")
-    public ResponseEntity<DeployVersionVO> queryDeployedVersions(
-            @ApiParam(value = "项目ID", required = true)
-            @PathVariable(value = "project_id") Long projectId,
-            @ApiParam(value = "服务ID", required = true)
-            @PathVariable(value = "app_service_id") Long appServiceId) {
-        return Optional.ofNullable(appServiceVersionService.queryDeployedVersions(appServiceId))
-                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
-                .orElseThrow(() -> new CommonException(VERSION_QUERY_ERROR));
-    }
+//    /**
+//     * 项目下查询服务最新的版本和各环境下部署的版本
+//     *
+//     * @param projectId    项目ID
+//     * @param appServiceId 服务ID
+//     * @return DeployVersionVO
+//     */
+//    @Permission(type = ResourceType.PROJECT,
+//            roles = {InitRoleCode.PROJECT_OWNER,
+//                    InitRoleCode.PROJECT_MEMBER})
+//    @ApiOperation(value = "项目下查询服务最新的版本和各环境下部署的版本")
+//    @GetMapping(value = "/app_service/{app_service_id}/deployVersions")
+//    public ResponseEntity<DeployVersionVO> queryDeployedVersions(
+//            @ApiParam(value = "项目ID", required = true)
+//            @PathVariable(value = "project_id") Long projectId,
+//            @ApiParam(value = "服务ID", required = true)
+//            @PathVariable(value = "app_service_id") Long appServiceId) {
+//        return Optional.ofNullable(appServiceVersionService.queryDeployedVersions(appServiceId))
+//                .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
+//                .orElseThrow(() -> new CommonException(VERSION_QUERY_ERROR));
+//    }
 
 
     /**
@@ -278,7 +272,7 @@ public class AppServiceVersionController {
      */
     @Permission(type = ResourceType.PROJECT,
             roles = {InitRoleCode.PROJECT_OWNER, InitRoleCode.PROJECT_MEMBER})
-    @ApiOperation(value = "根据服务ID查询最新生成版本")
+    @ApiOperation(value = "根据服务ID查询最新生成版本的values")
     @GetMapping("/value")
     public ResponseEntity<String> queryByProjectId(
             @ApiParam(value = "项目Id", required = true)
@@ -327,11 +321,11 @@ public class AppServiceVersionController {
             @ApiParam(value = "服务Id", required = true)
             @RequestParam(value = "app_service_id") Long appServiceId,
             @ApiParam(value = "分页参数")
-            @SortDefault(value = "id", direction = Sort.Direction.DESC) PageRequest pageRequest,
+            @SortDefault(value = "id", direction = Sort.Direction.DESC) Pageable pageable,
             @ApiParam(value = "查询参数")
             @RequestParam(value = "version", required = false) String version) {
         return Optional.ofNullable(
-                appServiceVersionService.pageShareVersionByAppId(appServiceId, pageRequest, version))
+                appServiceVersionService.pageShareVersionByAppId(appServiceId, pageable, version))
                 .map(target -> new ResponseEntity<>(target, HttpStatus.OK))
                 .orElseThrow(() -> new CommonException("error.remote.application.versions.get"));
     }

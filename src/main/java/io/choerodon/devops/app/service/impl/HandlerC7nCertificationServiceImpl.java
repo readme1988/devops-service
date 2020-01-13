@@ -1,9 +1,6 @@
 package io.choerodon.devops.app.service.impl;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
@@ -59,6 +56,7 @@ public class HandlerC7nCertificationServiceImpl implements HandlerObjectFileRela
                     }
                     return certificationDTO.getName();
                 })
+                .filter(Objects::nonNull)
                 .collect(Collectors.toList());
 
         List<C7nCertification> addC7nCertification = new ArrayList<>();
@@ -102,6 +100,11 @@ public class HandlerC7nCertificationServiceImpl implements HandlerObjectFileRela
                 throw new GitOpsExplainException(e.getMessage(), filePath, e);
             }
         });
+    }
+
+    @Override
+    public Class<C7nCertification> getTarget() {
+        return C7nCertification.class;
     }
 
     private void updateC7nCertificationPath(C7nCertification c7nCertification,

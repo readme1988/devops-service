@@ -15,6 +15,15 @@ public interface UserAttrService {
     UserAttrVO queryByUserId(Long userId);
 
     /**
+     * 如果传入的参数是null，抛出异常
+     *
+     * @param userAttrDTO 用户信息
+     * @param iamUserId   这个对象所对应的iamUserId，抛异常需要
+     * @return 通过校验后返回原封不动的入参
+     */
+    UserAttrDTO checkUserSync(UserAttrDTO userAttrDTO, Long iamUserId);
+
+    /**
      * 根据gitlab用户id查询平台用户id
      *
      * @param gitLabUserId gitLab user id
@@ -25,7 +34,7 @@ public interface UserAttrService {
 
     UserAttrDTO baseQueryByGitlabUserId(Long gitlabUserId);
 
-    int baseInsert(UserAttrDTO userAttrDTO);
+    void baseInsert(UserAttrDTO userAttrDTO);
 
     UserAttrDTO baseQueryById(Long id);
 
@@ -36,4 +45,12 @@ public interface UserAttrService {
     void baseUpdate(UserAttrDTO userAttrDTO);
 
     UserAttrDTO baseQueryByGitlabUserName(String gitlabUserName);
+
+    /**
+     * 更改用户 is_gitlab_admin字段的值
+     *
+     * @param iamUserId     iam用户id
+     * @param isGitlabAdmin 是否是gitlab管理员
+     */
+    void updateAdmin(Long iamUserId, Boolean isGitlabAdmin);
 }

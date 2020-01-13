@@ -1,5 +1,7 @@
 package io.choerodon.devops.app.eventhandler
 
+import io.choerodon.devops.api.vo.FileCreationVO
+
 import static org.mockito.ArgumentMatchers.*
 import static org.mockito.Mockito.when
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT
@@ -29,7 +31,7 @@ import io.choerodon.devops.api.vo.kubernetes.RepositoryFile
 import io.choerodon.devops.app.service.DevopsGitService
 import io.choerodon.devops.app.service.GitlabGroupMemberService
 import io.choerodon.devops.app.service.GitlabUserService
-import io.choerodon.devops.app.service.IamService
+
 import io.choerodon.devops.infra.dto.*
 import io.choerodon.devops.infra.dto.gitlab.*
 import io.choerodon.devops.infra.dto.iam.ApplicationDTO
@@ -63,8 +65,6 @@ class DemoEnvSetupSagaHandlerSpec extends Specification {
 
     @Autowired
     private DemoEnvSetupSagaHandler demoEnvSetupSagaHandler
-    @Autowired
-    private IamService iamRepository
     @Autowired
     private GitlabServiceClientOperator gitlabRepository
     @Autowired
@@ -163,8 +163,16 @@ class DemoEnvSetupSagaHandlerSpec extends Specification {
             repositoryFile.setFilePath("test")
             ResponseEntity<RepositoryFile> repositoryFileResponseEntity = new ResponseEntity<>(repositoryFile, HttpStatus.OK)
 
-            Mockito.when(gitlabServiceClient.createFile(anyInt(), anyString(), anyString(), anyString(), anyInt())).thenReturn(repositoryFileResponseEntity)
-            Mockito.when(gitlabServiceClient.createFile(anyInt(), anyString(), anyString(), anyString(), anyInt(), any())).thenReturn(repositoryFileResponseEntity)
+            FileCreationVO fileCreationVO = new FileCreationVO()
+            fileCreationVO.setBranchName(anyString())
+            fileCreationVO.setCommitMessage(anyString())
+            fileCreationVO.setContent(anyString())
+            fileCreationVO.setUserId(anyInt())
+            fileCreationVO.setProjectId(anyInt())
+            fileCreationVO.setPath(anyString())
+
+            Mockito.when(gitlabServiceClient.createFile(anyInt(), fileCreationVO)).thenReturn(repositoryFileResponseEntity)
+            Mockito.when(gitlabServiceClient.createFile(anyInt(), fileCreationVO)).thenReturn(repositoryFileResponseEntity)
 
             Mockito.when(gitlabServiceClient.queryBranch(any(), any())).thenReturn(responseEntity6)
 

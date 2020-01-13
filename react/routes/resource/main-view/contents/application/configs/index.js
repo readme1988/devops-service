@@ -12,6 +12,7 @@ import ClickText from '../../../../../../components/click-text';
 import { useMainStore } from '../../../stores';
 
 import './index.less';
+import StatusIcon from '../../../../../../components/StatusIcon';
 
 const { Column } = Table;
 const modalKey = Modal.key();
@@ -64,20 +65,19 @@ const AppConfigs = observer(() => {
 
   function renderName({ value, record }) {
     const commandStatus = record.get('commandStatus');
+    const error = record.get('error');
     const disabled = getEnvIsNotRunning() || commandStatus === 'operating';
     return (
-      <div>
-        <StatusTags
-          name={formatMessage({ id: commandStatus || 'null' })}
-          colorCode={commandStatus || 'success'}
-          style={statusStyle}
-        />
-        <ClickText
-          value={value}
+      <div className={`${prefixCls}-keyValue-name`}>
+        <StatusIcon
+          width={0.4}
+          name={value}
           clickAble={!disabled}
           onClick={handleEdit}
-          record={record}
+          status={commandStatus || ''}
+          error={error || ''}
           permissionCode={['devops-service.devops-config-map.update']}
+          record={record}
         />
       </div>
     );
@@ -121,10 +121,10 @@ const AppConfigs = observer(() => {
           border={false}
           queryBar="bar"
         >
-          <Column name="name" header={formatMessage({ id: `${intlPrefix}.application.tabs.mapping` })} renderer={renderName} />
+          <Column name="name" sortable header={formatMessage({ id: `${intlPrefix}.application.tabs.mapping` })} renderer={renderName} />
           <Column renderer={renderAction} width="0.7rem" />
           <Column name="key" renderer={renderKey} />
-          <Column name="lastUpdateDate" renderer={renderDate} width="1rem" />
+          <Column name="lastUpdateDate" renderer={renderDate} width="1rem" sortable />
         </Table>
       </div>
     </div>

@@ -9,7 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import io.choerodon.base.annotation.Permission;
+import io.choerodon.core.annotation.Permission;
 import io.choerodon.devops.app.service.AppServiceService;
 import io.choerodon.devops.app.service.AppServiceVersionService;
 
@@ -38,7 +38,7 @@ public class CiController {
      */
     @Permission(
             permissionPublic = true)
-    @ApiOperation(value = "服务查询ci脚本文件")
+    @ApiOperation(value = "根据应用服务的Token和类型查询某个应用服务用于ci的脚本文件")
     @GetMapping
     public ResponseEntity<String> queryFile(
             @ApiParam(value = "token")
@@ -67,7 +67,7 @@ public class CiController {
             @ApiParam(value = "image", required = true)
             @RequestParam String image,
             @ApiParam(value = "harbor_config_id", required = true)
-            @RequestParam String harborConfigId,
+            @RequestParam(value = "harbor_config_id") String harborConfigId,
             @ApiParam(value = "token", required = true)
             @RequestParam String token,
             @ApiParam(value = "版本", required = true)

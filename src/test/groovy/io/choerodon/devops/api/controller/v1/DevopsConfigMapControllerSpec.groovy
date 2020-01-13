@@ -5,10 +5,11 @@ import io.choerodon.devops.DependencyInjectUtil
 import io.choerodon.devops.IntegrationTestConfiguration
 import io.choerodon.devops.api.vo.DevopsConfigMapRespVO
 import io.choerodon.devops.api.vo.DevopsConfigMapVO
+import io.choerodon.devops.api.vo.FileCreationVO
 import io.choerodon.devops.api.vo.iam.ProjectWithRoleVO
 import io.choerodon.devops.api.vo.iam.RoleVO
 import io.choerodon.devops.app.service.GitlabGroupMemberService
-import io.choerodon.devops.app.service.IamService
+
 import io.choerodon.devops.app.service.impl.DevopsConfigMapServiceImpl
 import io.choerodon.devops.infra.dto.DevopsEnvFileResourceDTO
 import io.choerodon.devops.infra.dto.DevopsEnvironmentDTO
@@ -58,8 +59,6 @@ class DevopsConfigMapControllerSpec extends Specification {
     private DevopsConfigMapMapper devopsConfigMapMapper
     @Autowired
     private DevopsEnvFileResourceMapper devopsEnvFileResourceMapper
-    @Autowired
-    private IamService iamRepository
     @Autowired
     private GitlabServiceClientOperator gitlabRepository
     @Autowired
@@ -120,9 +119,19 @@ class DevopsConfigMapControllerSpec extends Specification {
         RepositoryFileDTO file = new RepositoryFileDTO()
         file.setFilePath("filePath")
         ResponseEntity<RepositoryFileDTO> responseEntity2 = new ResponseEntity<>(file, HttpStatus.OK)
-        Mockito.when(gitlabServiceClient.createFile(anyInt(), anyString(), anyString(), anyString(), anyInt())).thenReturn(responseEntity2)
 
-        Mockito.when(gitlabServiceClient.updateFile(anyInt(), anyString(), anyString(), anyString(), anyInt())).thenReturn(responseEntity2)
+
+        FileCreationVO fileCreationVO = new FileCreationVO()
+        fileCreationVO.setBranchName(anyString())
+        fileCreationVO.setCommitMessage(anyString())
+        fileCreationVO.setContent(anyString())
+        fileCreationVO.setUserId(anyInt())
+        fileCreationVO.setProjectId(anyInt())
+        fileCreationVO.setPath(anyString())
+
+        Mockito.when(gitlabServiceClient.createFile(anyInt(), fileCreationVO)).thenReturn(responseEntity2)
+
+        Mockito.when(gitlabServiceClient.updateFile(anyInt(), fileCreationVO)).thenReturn(responseEntity2)
     }
 
     def cleanup() {
@@ -179,7 +188,7 @@ class DevopsConfigMapControllerSpec extends Specification {
 
         and: 'mock envUtil'
         envUtil.checkEnvConnection(_ as Long) >> null
-        envUtil.handDevopsEnvGitRepository(_ as Long, _ as String, _ as String) >> "src/test/gitops/testConfigMap"
+        envUtil.handDevopsEnvGitRepository(_ as Long, _ as String, _ as String, _ as String) >> "src/test/gitops/testConfigMap"
 
         when: '创建'
         restTemplate.postForObject(MAPPING, devopsConfigMapDTO, Object.class, 1L)

@@ -17,6 +17,15 @@ export default function useStore() {
     get getResponseData() {
       return this.responseData;
     },
+
+    clusterDefaultTab: null,
+    setClusterDefaultTab(data) {
+      this.clusterDefaultTab = data;
+    },
+    get getClusterDefaultTab() {
+      return this.clusterDefaultTab;
+    },
+
     checkClusterName({ projectId, clusterName }) {
       return axios.get(`/devops/v1/projects/${projectId}/clusters/check_name?name=${clusterName}`);
     },
@@ -33,7 +42,7 @@ export default function useStore() {
       return axios.delete(`/devops/v1/projects/${projectId}/clusters/${clusterId}`);
     },
     deleteCheck(projectId, clusterId) {
-      return axios.get(`/devops/v1/projects/${projectId}/clusters/${clusterId}/check_connect_envs`);
+      return axios.get(`/devops/v1/projects/${projectId}/clusters/${clusterId}/check_connect_envs_and_pv`);
     },
   }));
 }

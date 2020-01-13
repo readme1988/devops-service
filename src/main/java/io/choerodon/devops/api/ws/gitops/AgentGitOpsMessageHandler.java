@@ -29,7 +29,8 @@ public class AgentGitOpsMessageHandler implements TextMessageHandler<AgentMsgVO>
     @Override
     public void handle(WebSocketSession webSocketSession, String type, String key, AgentMsgVO msg) {
         HelmType helmType = HelmType.forValue(String.valueOf(msg.getType()));
-        logger.info("===========================查看msg.type:{}", msg.getType());
+//        logger.info("===========================查看msg.type:{}", msg.getType());
+//        logger.info("===========================查看msg:{}",msg.toString());
         if (helmType == null) {
             logger.info("找不到指令啊 {}", msg.getType());
             return;
@@ -50,10 +51,12 @@ public class AgentGitOpsMessageHandler implements TextMessageHandler<AgentMsgVO>
             // helm release包中的相关资源(除去JOB)信息同步
             // 可能因为消息缓冲池大小太小而接收不到消息
             case HELM_INSTALL_RESOURCE_INFO:
+                logger.debug("helm_install_resource: {}", msg);
                 agentMsgHandlerService.helmInstallResourceInfo(msg.getKey(), msg.getPayload(), TypeUtil.objToLong(msg.getClusterId()));
                 break;
             // helm release更新时包中的相关资源(除去JOB)信息同步
             case HELM_UPGRADE_RESOURCE_INFO:
+                logger.debug("helm_update_resource: {}", msg);
                 agentMsgHandlerService.helmUpgradeResourceInfo(msg.getKey(), msg.getPayload(), TypeUtil.objToLong(msg.getClusterId()));
                 agentMsgHandlerService.updateInstanceStatus(
                         msg.getKey(),
@@ -179,9 +182,8 @@ public class AgentGitOpsMessageHandler implements TextMessageHandler<AgentMsgVO>
                 agentMsgHandlerService.getTestAppStatus(msg.getKey(), msg.getPayload(), TypeUtil.objToLong(msg.getClusterId()));
                 break;
             // Agent启动的时候发送给Devops,
-            // 如果是空的（也就是说没有certManager），devops会返回一些安装certManager所需的数据
-            case CERT_MANAGER_INFO:
-                agentMsgHandlerService.getCertManagerInfo(msg.getPayload(), TypeUtil.objToLong(msg.getClusterId()));
+            case CERT_MANAGER_STATUS:
+                agentMsgHandlerService.getCertManagerInfo(msg, TypeUtil.objToLong(msg.getClusterId()));
                 break;
             // 接收Agent定时发送的节点数据
             case NODE_SYNC:
